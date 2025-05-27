@@ -34,7 +34,7 @@
             background: #c1c1c1;
             border-radius: 10px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        .custom-scrollbar::-webkit-webkit-scrollbar-thumb:hover {
             background: #a1a1a1;
         }
         /* Removed table-layout: fixed to allow auto-adjusting column widths */
@@ -282,6 +282,23 @@
         // Global variable to store the calculated width of a single week column
         let singleColumnPixelWidth = 0;
 
+        // Helper to get the week index for a given date, based on Monday start
+        function getWeekIndexForDate(date) {
+            const normalizedDate = new Date(date);
+            normalizedDate.setHours(0, 0, 0, 0);
+
+            for (let i = 0; i < allPlannerWeeks.length; i++) {
+                const weekStartDate = new Date(allPlannerWeeks[i].startDate + 'T00:00:00');
+                const weekEndDate = new Date(weekStartDate);
+                weekEndDate.setDate(weekStartDate.getDate() + 4); // Monday to Friday
+
+                if (normalizedDate >= weekStartDate && normalizedDate <= weekEndDate) {
+                    return i;
+                }
+            }
+            return -1; // Date not found in any defined week
+        }
+
         function renderPlanner() {
             const weeksToDisplay = allPlannerWeeks;
 
@@ -291,6 +308,7 @@
             // Get today's date, normalized to midnight for comparison
             const today = new Date();
             today.setHours(0, 0, 0, 0);
+            const currentWeekIndex = getWeekIndexForDate(today);
 
             // Clear previous content
             tableHead.innerHTML = '<th class="p-3 text-left text-sm font-semibold tracking-wider border border-indigo-700 table-fixed-col bg-indigo-800 day-column-width">Day</th>';
@@ -330,11 +348,7 @@
 
             let currentPhaseWeekIndex = 0;
             multiWeekNotes.forEach(note => {
-                // Determine if this multi-week note's start is in the past
-                const noteStartDate = new Date(allPlannerWeeks[note.startWeekIndex].startDate + 'T00:00:00');
-                const isNotePast = noteStartDate < today;
-
-                // Add empty cells for any gaps before this note
+                // Fill any empty cells before this note starts
                 if (note.startWeekIndex > currentPhaseWeekIndex) {
                     const emptyGapTd = document.createElement('td');
                     emptyGapTd.colSpan = note.startWeekIndex - currentPhaseWeekIndex;
@@ -349,11 +363,6 @@
                 td.dataset.startWeekIndex = note.startWeekIndex;
                 td.dataset.spanWeeks = note.spanWeeks;
 
-                // Add 'past-day' class to the cell if the note starts in the past
-                if (isNotePast) {
-                    td.classList.add('past-day');
-                }
-
                 const noteContainer = document.createElement('div');
                 noteContainer.className = 'flex items-center justify-center h-full relative';
                 const notePill = document.createElement('div');
@@ -363,27 +372,65 @@
                     notePill.textContent = note.text;
                     // Remove any existing Tailwind color classes to ensure inline style takes precedence
                     notePill.classList.remove(...Object.values(colorClassMap), 'text-white');
-                    
-                    if (isNotePast) {
+                    notePill.style.backgroundColor = ''; // Clear previous inline background color
+                    notePill.style.backgroundImage = ''; // Clear previous background image
+                    notePill.style.color = ''; // Clear previous inline text color
+
+                    let actualColorHex = '';
+                    if (note.color && note.color.startsWith('bg-')) {
+                        actualColorHex = reverseColorClassMap[note.color] || reverseColorClassMap[defaultPillColor];
+                    } else if (note.color && note.color.startsWith('#')) {
+                        actualColorHex = note.color;
+                    } else {
+                        actualColorHex = reverseColorClassMap[defaultPillColor];
+                    }
+
+                    const noteEndWeekIndex = note.startWeekIndex + note.spanWeeks - 1;
+
+                    // Check if the note is entirely in the past
+                    if (noteEndWeekIndex < currentWeekIndex) {
                         notePill.style.backgroundColor = pastNoteBgColor;
                         notePill.style.color = pastNoteTextColor;
-                    } else {
-                        // Apply original color if it's a current/future note
+                        td.classList.add('past-day'); // Apply past-day class to the cell
+                    }
+                    // Check if the note spans from past into the current week or future
+                    else if (note.startWeekIndex < currentWeekIndex && noteEndWeekIndex >= currentWeekIndex) {
+                        const pastWeeksCoveredByNote = currentWeekIndex - note.startWeekIndex;
+                        const percentagePast = (pastWeeksCoveredByNote / note.spanWeeks) * 100;
+
+                        // Apply a linear gradient for split color
+                        notePill.style.backgroundImage = `linear-gradient(to right, ${pastNoteBgColor} ${percentagePast}%, ${actualColorHex} ${percentagePast}%)`;
+                        // Text color should be contrasting to the *original* color, or we could try a gradient text color which is more complex.
+                        // For simplicity, let's use the original contrasting text color.
+                        notePill.style.color = getContrastTextColor(actualColorHex);
+                        td.classList.add('past-day'); // Apply past-day class to the cell as it starts in the past
+                    }
+                    // Note is entirely in the current week or future
+                    else {
                         if (note.color && note.color.startsWith('bg-')) {
                             notePill.classList.add(note.color);
                             notePill.classList.add('text-white');
-                            notePill.style.backgroundColor = ''; // Clear inline style
-                            notePill.style.color = ''; // Clear inline style
                         } else if (note.color && note.color.startsWith('#')) {
-                            notePill.style.backgroundColor = note.color;
-                            notePill.style.color = getContrastTextColor(note.color);
-                            notePill.classList.remove('text-white'); // Ensure text-white is removed if not needed
+                            notePill.style.backgroundColor = actualColorHex;
+                            notePill.style.color = getContrastTextColor(actualColorHex);
                         } else {
                             notePill.classList.add(defaultPillColor);
                             notePill.classList.add('text-white');
-                            notePill.style.backgroundColor = '';
-                            notePill.style.color = '';
                         }
+                        td.classList.remove('past-day'); // Ensure no past-day class if it's not past
+                    }
+                } else {
+                    // If no text, ensure no background image or color is applied
+                    notePill.style.backgroundColor = '';
+                    notePill.style.backgroundImage = '';
+                    notePill.style.color = '';
+                    notePill.classList.remove(...Object.values(colorClassMap), 'text-white');
+                    // Still apply past-day to the cell if it's in the past and empty
+                    const noteEndWeekIndex = note.startWeekIndex + note.spanWeeks - 1;
+                    if (noteEndWeekIndex < currentWeekIndex) {
+                         td.classList.add('past-day');
+                    } else {
+                         td.classList.remove('past-day');
                     }
                 }
                 noteContainer.appendChild(notePill);
@@ -494,6 +541,12 @@
                             notePill.style.color = '';
                         }
                     }
+                } else {
+                    // If no text, ensure no background image or color is applied
+                    notePill.style.backgroundColor = '';
+                    notePill.style.backgroundImage = '';
+                    notePill.style.color = '';
+                    notePill.classList.remove(...Object.values(colorClassMap), 'text-white');
                 }
                 noteContainer.appendChild(notePill);
                 td.appendChild(noteContainer);
@@ -555,6 +608,12 @@
                                 notePill.style.color = '';
                             }
                         }
+                    } else {
+                        // If no text, ensure no background image or color is applied
+                        notePill.style.backgroundColor = '';
+                        notePill.style.backgroundImage = '';
+                        notePill.style.color = '';
+                        notePill.classList.remove(...Object.values(colorClassMap), 'text-white');
                     }
                     noteContainer.appendChild(notePill);
                     td.appendChild(noteContainer);
@@ -891,9 +950,6 @@
             // Apply temporary styles to ensure all content is visible
             if (tableContainer) {
                 originalTableContainerOverflowX = tableContainer.style.overflowX;
-                originalTableContainerHeight = tableContainer.style.height;
-                originalTableContainerMaxHeight = tableContainer.style.maxHeight;
-
                 tableContainer.style.overflowX = 'visible';
                 tableContainer.style.height = 'auto'; // Remove fixed height
                 tableContainer.style.maxHeight = 'none'; // Remove max-height
