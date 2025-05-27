@@ -155,6 +155,7 @@
             text-shadow: 1px 1px 0px rgba(0,0,0,0.2); /* Added subtle text shadow for "fatter" effect */
             padding: 0.5rem 1rem; /* Increased padding */
             padding-right: 3.5rem; /* More space for plus button to prevent overlap */
+            padding-left: 2.5rem; /* More space for exclamation mark */
             font-size: 16px !important;
             line-height: 1.2;
             position: relative; /* Make pill a positioning context for the plus button */
@@ -180,6 +181,25 @@
             align-items: center;
             justify-content: center;
             z-index: 21; /* Ensure it's above text and handles */
+        }
+        /* Exclamation mark styling */
+        .exclamation-mark {
+            position: absolute;
+            top: 2px; /* Adjust as needed */
+            left: 2px; /* Adjust as needed */
+            background-color: #ef4444; /* Red */
+            color: white;
+            font-size: 0.75rem; /* Smaller font for '!' */
+            width: 16px; /* Small circle */
+            height: 16px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            line-height: 1;
+            z-index: 22; /* Ensure it's above other elements */
+            border: 1px solid #dc2626;
         }
 
 
@@ -226,6 +246,20 @@
             font-size: 0.875rem;
             padding: 0.375rem 0.75rem;
             border-color: #dc2626; /* Darker red */
+        }
+        #add-exclamation-btn { /* Style for the new exclamation button in modal */
+            background-color: #ef4444; /* Red */
+            color: white;
+            font-size: 1.5rem; /* Larger '!' symbol */
+            width: 40px; /* Square button */
+            height: 40px;
+            padding: 0; /* No internal padding */
+            border-radius: 4px; /* Square corners */
+            border-color: #dc2626;
+        }
+        #add-exclamation-btn.active-exclamation {
+            background-color: #dc2626; /* Darker red when active */
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); /* Inset shadow for "pressed" look */
         }
 
         /* Modal buttons */
@@ -310,14 +344,15 @@
                 <label for="color-picker" class="block text-sm font-medium mb-2">Choose Color:</label>
                 <div class="flex items-center space-x-2 mb-4">
                     <div id="color-swatches" class="flex space-x-2">
-                        </div>
+                    </div>
                     <input type="color" id="color-picker" class="w-10 h-10 rounded-full border-2 cursor-pointer">
                 </div>
             </div>
 
-            <div class="mt-6 flex justify-end space-x-3">
-                <button id="delete-note-btn" class="btn-base">Delete Note</button>
-                <button id="save-note-btn" class="btn-base">Save Note</button>
+            <div class="mt-6 flex justify-between items-center"> <button id="add-exclamation-btn" class="btn-base bg-red-500 text-white">!</button> <div class="flex space-x-3">
+                    <button id="delete-note-btn" class="btn-base">Delete Note</button>
+                    <button id="save-note-btn" class="btn-base">Save Note</button>
+                </div>
             </div>
         </div>
     </div>
@@ -358,6 +393,9 @@
         const confirmNoBtn = document.getElementById('confirm-no-btn');
         const confirmYesBtn = document.getElementById('confirm-yes-btn');
 
+        // New element for Exclamation button
+        const addExclamationBtn = document.getElementById('add-exclamation-btn');
+
         // Undo/Redo related variables
         let undoStack = [];
         let undoStackIndex = -1;
@@ -371,7 +409,7 @@
         let notes = {}; // Stores daily and single-week 'weekly' notes
         // Stores multi-week 'phase' notes
         let multiWeekNotes = [
-            { id: 'phase-note-0', text: '', color: 'bg-indigo-500', startWeekIndex: 0, spanWeeks: 26 }
+            { id: 'phase-note-0', text: '', color: 'bg-indigo-500', startWeekIndex: 0, spanWeeks: 26, hasExclamation: false }
         ];
 
         const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -690,6 +728,14 @@
                     handleMultiWeekAddSplit(note.id); // Pass the ID of the note to split
                 });
                 td.appendChild(plusButton); // Append directly to td
+
+                // Add exclamation mark if note has it
+                if (note.hasExclamation) {
+                    const exclamationMarkDiv = document.createElement('div');
+                    exclamationMarkDiv.className = 'exclamation-mark';
+                    exclamationMarkDiv.textContent = '!';
+                    notePill.appendChild(exclamationMarkDiv); // Append to the notePill
+                }
                 
                 td.appendChild(noteContainer);
                 // All cells are clickable now
@@ -778,6 +824,13 @@
                             notePill.classList.add('text-white');
                         }
                     }
+                    // Add exclamation mark if note has it
+                    if (noteData.hasExclamation) {
+                        const exclamationMarkDiv = document.createElement('div');
+                        exclamationMarkDiv.className = 'exclamation-mark';
+                        exclamationMarkDiv.textContent = '!';
+                        notePill.appendChild(exclamationMarkDiv); // Append to the notePill
+                    }
                 } else {
                     // If no text, ensure no background image or color is applied
                     notePill.style.backgroundColor = '';
@@ -841,9 +894,14 @@
                             } else {
                                 notePill.classList.add(defaultPillColor);
                                 notePill.classList.add('text-white');
-                                notePill.style.backgroundColor = '';
-                                notePill.style.color = '';
                             }
+                        }
+                        // Add exclamation mark if note has it
+                        if (noteData.hasExclamation) {
+                            const exclamationMarkDiv = document.createElement('div');
+                            exclamationMarkDiv.className = 'exclamation-mark';
+                            exclamationMarkDiv.textContent = '!';
+                            notePill.appendChild(exclamationMarkDiv); // Append to the notePill
                         }
                     } else {
                         // If no text, ensure no background image or color is applied
@@ -896,31 +954,33 @@
             currentEditingDate = noteKey;
             let noteData;
             let storedColor = ''; // Will hold either Tailwind class or hex
+            let hasExclamation = false; // Default for new notes
 
             if (noteKey.startsWith('phase-note-')) {
-                noteData = multiWeekNotes.find(note => note.id === noteKey) || { text: '', color: defaultPillColor };
+                noteData = multiWeekNotes.find(note => note.id === noteKey) || { text: '', color: defaultPillColor, hasExclamation: false };
                 modalTitle.textContent = `Phase Note`;
                 modalDateDisplay.textContent = `Weeks: ${noteData.startWeekIndex + 1} - ${noteData.startWeekIndex + noteData.spanWeeks}`;
             } else if (noteKey.startsWith('weekly-specific-week-')) {
                 const weekIndex = parseInt(noteKey.split('-')[3]);
-                noteData = notes[noteKey] || { text: '', color: defaultPillColor };
+                noteData = notes[noteKey] || { text: '', color: defaultPillColor, hasExclamation: false };
                 modalTitle.textContent = `Weekly Notes for Week ${allPlannerWeeks[weekIndex].weekNum}`;
                 modalDateDisplay.textContent = `Type: Weekly Notes`;
             } else { // Daily notes
                 const dateObj = new Date(noteKey + 'T00:00:00');
-                noteData = notes[noteKey] || { text: '', color: defaultPillColor };
+                noteData = notes[noteKey] || { text: '', color: defaultPillColor, hasExclamation: false };
                 modalTitle.textContent = `Notes for ${dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
                 modalDateDisplay.textContent = `Date: ${noteKey}`;
             }
             
             noteInput.value = noteData.text;
             storedColor = noteData.color; // Get the stored color (Tailwind class or hex)
+            hasExclamation = noteData.hasExclamation; // Get exclamation state
 
             let colorHexForPicker = '';
             // If the stored color is a Tailwind class, convert it to hex for the picker
             if (storedColor.startsWith('bg-')) {
                 colorHexForPicker = reverseColorClassMap[storedColor] || reverseColorClassMap[defaultPillColor];
-            } else if (storedColor.startsWith('#')) {
+            } else if (storedColor.color && storedColor.startsWith('#')) { // Check storedColor.color
                 // If it's already a hex, use it directly
                 colorHexForPicker = storedColor;
             } else {
@@ -932,6 +992,13 @@
             // Pass the stored color (Tailwind class or hex) to update swatches
             updateSelectedSwatch(storedColor); 
             renderLastUsedColors(); // Render last used colors when modal opens
+
+            // Set the state of the exclamation button
+            if (hasExclamation) {
+                addExclamationBtn.classList.add('active-exclamation');
+            } else {
+                addExclamationBtn.classList.remove('active-exclamation');
+            }
 
             notesModal.classList.remove('opacity-0', 'invisible');
             notesModal.classList.add('opacity-100', 'visible');
@@ -953,6 +1020,7 @@
             if (currentEditingDate) {
                 const noteText = noteInput.value.trim();
                 const chosenHexColor = colorPicker.value; // This is always a hex from the input type="color"
+                const hasExclamation = addExclamationBtn.classList.contains('active-exclamation'); // Get current state of button
                 let colorToStore = chosenHexColor;
 
                 // Check if the chosen hex matches any of our predefined swatches
@@ -973,12 +1041,14 @@
                         if (noteText) {
                             multiWeekNotes[noteIndex].text = noteText;
                             multiWeekNotes[noteIndex].color = colorToStore; // Store hex or Tailwind class
+                            multiWeekNotes[noteIndex].hasExclamation = hasExclamation; // Save exclamation state
                         } else {
                             // If text is empty, remove the phase note.
                             // If it's the only one, reset it to a blank full span.
                             if (multiWeekNotes.length === 1 && multiWeekNotes[0].id === currentEditingDate) {
                                 multiWeekNotes[0].text = '';
                                 multiWeekNotes[0].color = defaultPillColor;
+                                multiWeekNotes[0].hasExclamation = false; // Reset exclamation
                             } else {
                                 multiWeekNotes.splice(noteIndex, 1);
                                 // After deletion, check for adjacent notes to merge if they become contiguous
@@ -988,7 +1058,7 @@
                     }
                 } else { // Daily or new 'weekly' row notes
                     if (noteText) {
-                        notes[currentEditingDate] = { text: noteText, color: colorToStore }; // Store hex or Tailwind class
+                        notes[currentEditingDate] = { text: noteText, color: colorToStore, hasExclamation: hasExclamation }; // Store hex or Tailwind class and exclamation
                     } else {
                         delete notes[currentEditingDate]; // Remove note if empty
                     }
@@ -1008,6 +1078,7 @@
                         if (multiWeekNotes.length === 1 && multiWeekNotes[0].id === currentEditingDate) {
                             multiWeekNotes[0].text = '';
                             multiWeekNotes[0].color = defaultPillColor;
+                            multiWeekNotes[0].hasExclamation = false; // Reset exclamation
                         } else {
                             multiWeekNotes.splice(noteIndex, 1);
                             mergeAdjacentPhaseNotes();
@@ -1081,7 +1152,8 @@
                             text: '',
                             color: defaultPillColor,
                             startWeekIndex: noteToSplit.startWeekIndex + newSpan1,
-                            spanWeeks: newSpan2
+                            spanWeeks: newSpan2,
+                            hasExclamation: false // Default to false for new split notes
                         };
                         multiWeekNotes.splice(noteIndex + 1, 0, newNote); // Insert new note after the original
                         savePlannerData(); // Save data after modification
@@ -1094,7 +1166,8 @@
                     text: '',
                     color: defaultPillColor,
                     startWeekIndex: startWeekIndexForNew,
-                    spanWeeks: spanWeeksForNew
+                    spanWeeks: spanWeeksForNew,
+                    hasExclamation: false // Default to false for new notes
                 };
                 multiWeekNotes.push(newNote);
                 multiWeekNotes.sort((a, b) => a.startWeekIndex - b.startWeekIndex); // Keep sorted
@@ -1355,7 +1428,7 @@
             saveState(); // Save state before clearing everything
             notes = {}; // Clear daily/weekly notes
             // Reset multi-week note to a single, full-span, empty note
-            multiWeekNotes = [{ id: `phase-note-${Date.now()}`, text: '', color: 'bg-indigo-500', startWeekIndex: 0, spanWeeks: allPlannerWeeks.length }];
+            multiWeekNotes = [{ id: `phase-note-${Date.now()}`, text: '', color: 'bg-indigo-500', startWeekIndex: 0, spanWeeks: allPlannerWeeks.length, hasExclamation: false }];
             savePlannerData();
             renderPlanner();
             confirmClearModal.classList.add('opacity-0', 'invisible');
@@ -1413,6 +1486,11 @@
                 colorPicker.value = hexColorForPicker; // Set the native color picker's value
                 updateSelectedSwatch(colorData); // Update swatches based on the stored data color
             }
+        });
+
+        // Event listener for the new exclamation button
+        addExclamationBtn.addEventListener('click', () => {
+            addExclamationBtn.classList.toggle('active-exclamation');
         });
 
         // Initial load of data and render
