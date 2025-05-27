@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graduation Project Planning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .table-fixed-col {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+        }
+        .modal {
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal-content {
+            transition: transform 0.3s ease-in-out;
+        }
+        /* Custom scrollbar for webkit browsers */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        /* Removed table-layout: fixed to allow auto-adjusting column widths */
+        table {
+            /* table-layout: fixed; */ /* Removed to allow auto-adjusting width */
+            width: auto; /* Allow table to grow beyond container width */
+            min-width: 100%; /* Ensure it still takes at least 100% when content is small */
+            border-collapse: collapse;
+        }
+        th, td {
+            overflow-wrap: break-word; /* Ensure content wraps within cells */
+            white-space: normal; /* Allow text to wrap naturally */
+            padding: 0.5rem 0.75rem; /* Adjusted padding for more content space */
+        }
+        /* Specific width for the Day column */
+        .day-column-width {
+            width: 128px; /* w-32 */
+            min-width: 128px;
+        }
+
+        /* Styles for color picker swatches */
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 9999px; /* pill shape */
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.15s ease-in-out;
+        }
+        .color-swatch.selected {
+            border-color: #312e81; /* indigo-800 */
+        }
+        /* Styles for multi-week note handles */
+        .resize-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 8px; /* Wider for easier grabbing */
+            cursor: ew-resize;
+            background-color: rgba(99, 102, 241, 0.5); /* indigo-500 with transparency */
+            opacity: 0;
+            transition: opacity 0.15s ease-in-out;
+            z-index: 20; /* Above note pill */
+        }
+        .resize-handle:hover {
+            opacity: 1;
+        }
+        .resize-handle.left {
+            left: 0;
+            border-top-left-radius: 9999px;
+            border-bottom-left-radius: 9999px;
+        }
+        .resize-handle.right {
+            right: 0;
+            border-top-right-radius: 9999px;
+            border-bottom-right-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-blue-50 text-stone-800 antialiased">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-full">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold text-indigo-800">Graduation Project Planning</h1>
+            <p class="mt-2 text-stone-600">Plan your schedule from May to October 2025. Click any date to add notes.</p>
+        </header>
+
+        <div class="overflow-x-auto custom-scrollbar bg-white shadow-xl rounded-lg">
+            <table id="planner-table" class="border-collapse">
+                <thead>
+                    <tr class="bg-indigo-800 text-white">
+                        <th class="p-3 text-left text-sm font-semibold tracking-wider border border-indigo-700 table-fixed-col bg-indigo-800 day-column-width">Day</th>
+                        {/* Week headers will be injected here by JS */}
+                    </tr>
+                </thead>
+                <tbody>
+                    {/* Phase row for multi-week notes */}
+                    {/* Weekly row for single-week notes */}
+                    {/* Day rows will be injected here by JS */}
+                </tbody>
+            </table>
+        </div>
+        <p class="mt-4 text-xs text-center text-stone-500">Planner data for year 2025.</p>
+
+        <div class="mt-8 flex justify-center">
+            <button id="export-pdf-btn" class="px-6 py-3 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 flex items-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                </svg>
+                <span>Export to PDF</span>
+            </button>
+        </div>
+    </div>
+
+    {/* Modal for Notes */}
+    <div id="notes-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 opacity-0 invisible z-50">
+        <div class="modal-content bg-white p-6 rounded-lg shadow-2xl w-full max-w-md transform scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="modal-title" class="text-2xl font-semibold text-indigo-800">Add Note</h2>
+                <button id="close-modal-btn" class="text-stone-500 hover:text-stone-700 text-2xl">&times;</button>
+            </div>
+            <p id="modal-date-display" class="mb-3 text-stone-600"></p>
+            <textarea id="note-input" rows="5" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-indigo-700 focus:border-indigo-700" placeholder="Enter your notes here..."></textarea>
+            
+            <div class="mt-4">
+                <label for="color-picker" class="block text-sm font-medium text-stone-700 mb-2">Choose Color:</label>
+                <div class="flex items-center space-x-2 mb-4">
+                    <div id="color-swatches" class="flex space-x-2">
+                        <div class="color-swatch bg-indigo-500" data-color="bg-indigo-500"></div>
+                        <div class="color-swatch bg-purple-500" data-color="bg-purple-500"></div>
+                        <div class="color-swatch bg-sky-500" data-color="bg-sky-500"></div>
+                        <div class="color-swatch bg-rose-500" data-color="bg-rose-500"></div>
+                    </div>
+                    <input type="color" id="color-picker" class="w-10 h-10 rounded-full border-2 border-stone-300 cursor-pointer">
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="delete-note-btn" class="px-5 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-150">Delete Note</button>
+                <button id="save-note-btn" class="px-5 py-2 bg-indigo-800 text-white rounded-lg hover:bg-indigo-700 transition duration-150">Save Note</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const year = 2025;
+        const plannerTable = document.getElementById('planner-table');
+        const notesModal = document.getElementById('notes-modal');
+        const modalContent = notesModal.querySelector('.modal-content');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const modalTitle = document.getElementById('modal-title');
+        const modalDateDisplay = document.getElementById('modal-date-display');
+        const noteInput = document.getElementById('note-input');
+        const saveNoteBtn = document.getElementById('save-note-btn');
+        const deleteNoteBtn = document.getElementById('delete-note-btn');
+        const colorPicker = document.getElementById('color-picker');
+        const colorSwatches = document.getElementById('color-swatches');
+        const exportPdfBtn = document.getElementById('export-pdf-btn'); // New PDF export button
+
+        let currentEditingDate = null; // Format: 'YYYY-MM-DD', 'weekly-specific-week-X', or 'phase-note-X'
+        let notes = {}; // Stores daily and single-week 'weekly' notes
+        // Stores multi-week 'phase' notes
+        let multiWeekNotes = [
+            { id: 'phase-note-0', text: '', color: 'bg-indigo-500', startWeekIndex: 0, spanWeeks: 26 }
+        ];
+
+        const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+        // Define the 26 weeks based on the source Markdown
+        const allPlannerWeeks = [
+            { weekNum: 1, startDate: '2025-05-05' }, { weekNum: 2, startDate: '2025-05-12' },
+            { weekNum: 3, startDate: '2025-05-19' }, { weekNum: 4, startDate: '2025-05-26' },
+            { weekNum: 5, startDate: '2025-06-02' }, { weekNum: 6, startDate: '2025-06-09' },
+            { weekNum: 7, startDate: '2025-06-16' }, { weekNum: 8, startDate: '2025-06-23' },
+            { weekNum: 9, startDate: '2025-06-30' }, { weekNum: 10, startDate: '2025-07-07' },
+            { weekNum: 11, startDate: '2025-07-14' }, { weekNum: 12, startDate: '2025-07-21' },
+            { weekNum: 13, startDate: '2025-07-28' }, { weekNum: 14, startDate: '2025-08-04' },
+            { weekNum: 15, startDate: '2025-08-11' }, { weekNum: 16, startDate: '2025-08-18' },
+            { weekNum: 17, startDate: '2025-08-25' }, { weekNum: 18, startDate: '2025-09-01' },
+            { weekNum: 19, startDate: '2025-09-08' }, { weekNum: 20, startDate: '2025-09-15' },
+            { weekNum: 21, startDate: '2025-09-22' }, { weekNum: 22, startDate: '2025-09-29' },
+            { weekNum: 23, startDate: '2025-10-06' }, { weekNum: 24, startDate: '2025-10-13' },
+            { weekNum: 25, startDate: '2025-10-20' }, { weekNum: 26, startDate: '2025-10-27' },
+        ];
+        
+        const defaultPillColor = 'bg-indigo-500';
+        const colorClassMap = {
+            '#6366f1': 'bg-indigo-500', // Indigo
+            '#a855f7': 'bg-purple-500', // Purple
+            '#0ea5e9': 'bg-sky-500',    // Sky Blue
+            '#f43f5e': 'bg-rose-500'    // Rose
+        };
+        const reverseColorClassMap = {
+            'bg-indigo-500': '#6366f1',
+            'bg-purple-500': '#a855f7',
+            'bg-sky-500': '#0ea5e9',
+            'bg-rose-500': '#f43f5e'
+        };
+
+        function formatDate(date) { // date is a Date object
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${date.getFullYear()}-${month}-${day}`;
+        }
+
+        // Load data from Local Storage on page load
+        function loadPlannerData() {
+            const storedNotes = localStorage.getItem('plannerNotes');
+            if (storedNotes) {
+                notes = JSON.parse(storedNotes);
+            }
+            const storedMultiWeekNotes = localStorage.getItem('multiWeekNotes');
+            if (storedMultiWeekNotes) {
+                multiWeekNotes = JSON.parse(storedMultiWeekNotes);
+            }
+        }
+
+        // Save data to Local Storage
+        function savePlannerData() {
+            localStorage.setItem('plannerNotes', JSON.stringify(notes));
+            localStorage.setItem('multiWeekNotes', JSON.stringify(multiWeekNotes));
+        }
+
+        // Global variable to store the calculated width of a single week column
+        let singleColumnPixelWidth = 0;
+
+        function renderPlanner() {
+            const weeksToDisplay = allPlannerWeeks;
+
+            const tableHead = plannerTable.querySelector('thead tr');
+            const tableBody = plannerTable.querySelector('tbody');
+
+            // Clear previous content
+            tableHead.innerHTML = '<th class="p-3 text-left text-sm font-semibold tracking-wider border border-indigo-700 table-fixed-col bg-indigo-800 day-column-width">Day</th>';
+            tableBody.innerHTML = '';
+
+            // Populate headers
+            weeksToDisplay.forEach(weekData => {
+                const th = document.createElement('th');
+                // Removed min-w for auto-adjusting width based on content.
+                // The actual width will be determined by content and browser's table layout algorithm.
+                th.className = "p-3 text-center text-sm font-semibold tracking-wider border border-indigo-700";
+                const monDate = new Date(weekData.startDate + 'T00:00:00');
+                const friDate = new Date(monDate);
+                friDate.setDate(monDate.getDate() + 4);
+                th.innerHTML = `Week ${weekData.weekNum}<br><span class="font-normal text-xs">(${monDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${friDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})</span>`;
+                tableHead.appendChild(th);
+            });
+
+            // After rendering headers, measure a typical column width
+            // This is crucial for drag-and-drop snapping
+            requestAnimationFrame(() => { // Use rAF to ensure layout is stable
+                const firstDataColumnHeader = tableHead.querySelector('th:not(.day-column-width)');
+                if (firstDataColumnHeader) {
+                    singleColumnPixelWidth = firstDataColumnHeader.offsetWidth;
+                }
+            });
+
+
+            // Add the 'Phase' row for multi-week notes
+            const phaseTr = document.createElement('tr');
+            phaseTr.className = 'bg-white';
+            const phaseTh = document.createElement('th');
+            phaseTh.className = "p-3 text-left text-sm font-medium border border-stone-300 table-fixed-col bg-blue-100 day-column-width";
+            phaseTh.textContent = 'Phase'; // Changed from 'Weekly' to 'Phase'
+            phaseTr.appendChild(phaseTh);
+
+            // Sort multiWeekNotes by startWeekIndex to ensure correct rendering order
+            multiWeekNotes.sort((a, b) => a.startWeekIndex - b.startWeekIndex);
+
+            let currentPhaseWeekIndex = 0;
+            multiWeekNotes.forEach(note => {
+                // Add empty cells for any gaps before this note
+                if (note.startWeekIndex > currentPhaseWeekIndex) {
+                    const emptyGapTd = document.createElement('td');
+                    emptyGapTd.colSpan = note.startWeekIndex - currentPhaseWeekIndex;
+                    emptyGapTd.className = "p-1 sm:p-3 text-center text-sm border border-stone-300 min-h-[200px] h-auto align-top relative";
+                    phaseTr.appendChild(emptyGapTd);
+                }
+
+                const td = document.createElement('td');
+                td.colSpan = note.spanWeeks;
+                td.className = "p-1 sm:p-3 text-center text-sm border border-stone-300 min-h-[200px] h-auto align-top relative hover:bg-indigo-50 transition duration-150 cursor-pointer";
+                td.dataset.noteId = note.id; // Store note ID for lookup
+                td.dataset.startWeekIndex = note.startWeekIndex;
+                td.dataset.spanWeeks = note.spanWeeks;
+
+                const noteContainer = document.createElement('div');
+                noteContainer.className = 'flex items-center justify-center h-full relative';
+                const notePill = document.createElement('div');
+                notePill.className = 'text-xs text-white rounded-full px-2 py-1 max-w-full break-words h-auto w-full';
+                
+                if (note.text) {
+                    notePill.textContent = note.text;
+                    notePill.classList.add(note.color || defaultPillColor);
+                }
+                noteContainer.appendChild(notePill);
+
+                // Add resize handles
+                const leftHandle = document.createElement('div');
+                leftHandle.className = 'resize-handle left';
+                leftHandle.dataset.handle = 'left';
+                noteContainer.appendChild(leftHandle);
+
+                const rightHandle = document.createElement('div');
+                rightHandle.className = 'resize-handle right';
+                rightHandle.dataset.handle = 'right';
+                noteContainer.appendChild(rightHandle);
+
+                // Add '+' button to the right of the note pill if it can be split
+                if (note.spanWeeks > 1) { // Only show plus if it can be split
+                    const plusButton = document.createElement('button');
+                    plusButton.className = "absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-indigo-600 text-white text-xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md";
+                    plusButton.textContent = '+';
+                    plusButton.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent modal from opening
+                        handleMultiWeekAddSplit(note.id); // Pass the ID of the note to split
+                    });
+                    noteContainer.appendChild(plusButton);
+                }
+
+
+                td.appendChild(noteContainer);
+                td.addEventListener('click', (e) => {
+                    if (!e.target.dataset.handle && e.target.tagName !== 'BUTTON') { // Only open modal if not clicking a resize handle or plus button
+                        openModal(note.id);
+                    }
+                });
+                phaseTr.appendChild(td);
+                currentPhaseWeekIndex = note.startWeekIndex + note.spanWeeks;
+            });
+
+            // Add a '+' button in the remaining empty space after all phase notes
+            if (currentPhaseWeekIndex < allPlannerWeeks.length) {
+                const remainingSpan = allPlannerWeeks.length - currentPhaseWeekIndex;
+                const plusButtonTd = document.createElement('td');
+                plusButtonTd.colSpan = remainingSpan;
+                plusButtonTd.className = "p-1 sm:p-3 text-center text-sm border border-stone-300 min-h-[200px] h-auto align-top relative";
+                const plusButton = document.createElement('button');
+                plusButton.className = "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-indigo-600 text-white text-3xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md";
+                plusButton.textContent = '+';
+                plusButton.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent any parent click handlers
+                    handleMultiWeekAddSplit(null, currentPhaseWeekIndex, remainingSpan); // Indicate adding a new note
+                });
+                plusButtonTd.appendChild(plusButton);
+                phaseTr.appendChild(plusButtonTd);
+            }
+            tableBody.appendChild(phaseTr);
+
+
+            // Add the new 'Weekly' row (like weekday rows)
+            const weeklyRowTr = document.createElement('tr');
+            weeklyRowTr.className = 'bg-blue-50'; // Consistent background
+            const weeklyRowTh = document.createElement('th');
+            weeklyRowTh.className = "p-3 text-left text-sm font-medium border border-stone-300 table-fixed-col bg-blue-100 day-column-width";
+            weeklyRowTh.textContent = 'Weekly';
+            weeklyRowTr.appendChild(weeklyRowTh);
+
+            weeksToDisplay.forEach((_, index) => {
+                const td = document.createElement('td');
+                // Set min-height for weekly cells, and allow height to auto-adjust
+                td.className = "p-1 sm:p-3 text-center text-sm border border-stone-300 min-h-[100px] h-auto align-top relative hover:bg-indigo-50 transition duration-150 cursor-pointer";
+                const weeklySpecificNoteKey = `weekly-specific-week-${index}`; // Unique key for this new weekly row
+                td.dataset.date = weeklySpecificNoteKey;
+
+                const noteContainer = document.createElement('div');
+                noteContainer.className = 'flex items-center justify-center h-full'; 
+                const notePill = document.createElement('div');
+                notePill.className = 'text-xs text-white rounded-full px-2 py-1 max-w-full break-words h-auto'; 
+
+                const noteData = notes[weeklySpecificNoteKey];
+                if (noteData && noteData.text) {
+                    notePill.textContent = noteData.text;
+                    notePill.classList.add(noteData.color || defaultPillColor);
+                }
+                noteContainer.appendChild(notePill);
+                td.appendChild(noteContainer);
+                td.addEventListener('click', () => openModal(weeklySpecificNoteKey));
+                weeklyRowTr.appendChild(td);
+            });
+            tableBody.appendChild(weeklyRowTr);
+
+
+            // Populate body for days of the week (Monday-Friday)
+            daysOfWeek.forEach((dayName, dayIndex) => {
+                const tr = document.createElement('tr');
+                tr.className = (dayIndex + 1) % 2 === 0 ? 'bg-blue-50' : 'bg-white';
+                
+                const thDayName = document.createElement('th');
+                thDayName.className = "p-3 text-left text-sm font-medium border border-stone-300 table-fixed-col bg-blue-100 day-column-width";
+                thDayName.textContent = dayName;
+                tr.appendChild(thDayName);
+
+                weeksToDisplay.forEach(weekData => {
+                    const td = document.createElement('td');
+                    // Set min-height for daily cells, and allow height to auto-adjust
+                    td.className = "p-1 sm:p-3 text-center text-sm border border-stone-300 min-h-[100px] h-auto align-top relative hover:bg-indigo-50 transition duration-150 cursor-pointer";
+                    
+                    const currentDate = new Date(weekData.startDate + 'T00:00:00');
+                    currentDate.setDate(currentDate.getDate() + dayIndex);
+                    
+                    const dateStr = formatDate(currentDate);
+                    td.dataset.date = dateStr;
+
+                    const noteContainer = document.createElement('div');
+                    noteContainer.className = 'flex items-center justify-center h-full'; 
+                    const notePill = document.createElement('div');
+                    notePill.className = 'text-xs text-white rounded-full px-2 py-1 max-w-full break-words h-auto'; 
+
+                    const noteData = notes[dateStr];
+                    if (noteData && noteData.text) {
+                        notePill.textContent = noteData.text;
+                        notePill.classList.add(noteData.color || defaultPillColor);
+                    }
+                    noteContainer.appendChild(notePill);
+                    td.appendChild(noteContainer);
+
+                    td.addEventListener('click', () => openModal(dateStr));
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function openModal(noteKey) {
+            currentEditingDate = noteKey;
+            let noteData;
+
+            if (noteKey.startsWith('phase-note-')) { // Changed from multi-week- to phase-note-
+                noteData = multiWeekNotes.find(note => note.id === noteKey) || { text: '', color: defaultPillColor };
+                modalTitle.textContent = `Phase Note`;
+                modalDateDisplay.textContent = `Weeks: ${noteData.startWeekIndex + 1} - ${noteData.startWeekIndex + noteData.spanWeeks}`;
+            } else if (noteKey.startsWith('weekly-specific-week-')) { // New weekly row
+                const weekIndex = parseInt(noteKey.split('-')[3]); // Adjusted index for new key format
+                noteData = notes[noteKey] || { text: '', color: defaultPillColor };
+                modalTitle.textContent = `Weekly Notes for Week ${allPlannerWeeks[weekIndex].weekNum}`;
+                modalDateDisplay.textContent = `Type: Weekly Notes`;
+            } else { // Daily notes
+                const dateObj = new Date(noteKey + 'T00:00:00');
+                noteData = notes[noteKey] || { text: '', color: defaultPillColor };
+                modalTitle.textContent = `Notes for ${dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+                modalDateDisplay.textContent = `Date: ${noteKey}`;
+            }
+            
+            noteInput.value = noteData.text;
+            
+            const initialColorHex = reverseColorClassMap[noteData.color] || colorPicker.value;
+            colorPicker.value = initialColorHex;
+            updateSelectedSwatch(noteData.color);
+
+            notesModal.classList.remove('opacity-0', 'invisible');
+            notesModal.classList.add('opacity-100', 'visible');
+            modalContent.classList.remove('scale-95');
+            modalContent.classList.add('scale-100');
+            noteInput.focus();
+        }
+
+        function closeModal() {
+            notesModal.classList.add('opacity-0', 'invisible');
+            notesModal.classList.remove('opacity-100', 'visible');
+            modalContent.classList.add('scale-95');
+            modalContent.classList.remove('scale-100');
+            currentEditingDate = null;
+        }
+
+        function saveNote() {
+            if (currentEditingDate) {
+                const noteText = noteInput.value.trim();
+                const selectedColorClass = colorClassMap[colorPicker.value] || defaultPillColor;
+
+                if (currentEditingDate.startsWith('phase-note-')) {
+                    const noteIndex = multiWeekNotes.findIndex(note => note.id === currentEditingDate);
+                    if (noteIndex !== -1) {
+                        if (noteText) {
+                            multiWeekNotes[noteIndex].text = noteText;
+                            multiWeekNotes[noteIndex].color = selectedColorClass;
+                        } else {
+                            // If text is empty, remove the phase note.
+                            // If it's the only one, reset it to a blank full span.
+                            if (multiWeekNotes.length === 1 && multiWeekNotes[0].id === currentEditingDate) {
+                                multiWeekNotes[0].text = '';
+                                multiWeekNotes[0].color = defaultPillColor;
+                            } else {
+                                multiWeekNotes.splice(noteIndex, 1);
+                                // After deletion, check for adjacent notes to merge if they become contiguous
+                                mergeAdjacentPhaseNotes();
+                            }
+                        }
+                    }
+                } else { // Daily or new 'weekly' row notes
+                    if (noteText) {
+                        notes[currentEditingDate] = { text: noteText, color: selectedColorClass };
+                    } else {
+                        delete notes[currentEditingDate]; // Remove note if empty
+                    }
+                }
+                savePlannerData(); // Save data after any modification
+                renderPlanner(); // Re-render to show note indicator
+                closeModal();
+            }
+        }
+        
+        function deleteCurrentNote() {
+            if (currentEditingDate) {
+                if (currentEditingDate.startsWith('phase-note-')) {
+                    const noteIndex = multiWeekNotes.findIndex(note => note.id === currentEditingDate);
+                    if (noteIndex !== -1) {
+                        if (multiWeekNotes.length === 1 && multiWeekNotes[0].id === currentEditingDate) {
+                            multiWeekNotes[0].text = '';
+                            multiWeekNotes[0].color = defaultPillColor;
+                        } else {
+                            multiWeekNotes.splice(noteIndex, 1);
+                            mergeAdjacentPhaseNotes();
+                        }
+                    }
+                } else { // Daily or new 'weekly' row notes
+                    delete notes[currentEditingDate];
+                }
+                savePlannerData(); // Save data after any modification
+                renderPlanner();
+                closeModal();
+            }
+        }
+
+        function updateSelectedSwatch(selectedColorClass) {
+            document.querySelectorAll('.color-swatch').forEach(swatch => {
+                swatch.classList.remove('selected');
+                if (swatch.dataset.color === selectedColorClass) {
+                    swatch.classList.add('selected');
+                }
+            });
+        }
+
+        // Handles both splitting an existing note and adding a new one in empty space
+        function handleMultiWeekAddSplit(noteIdToSplit, startWeekIndexForNew = null, spanWeeksForNew = null) {
+            if (noteIdToSplit) { // Splitting an existing note
+                const noteIndex = multiWeekNotes.findIndex(note => note.id === noteIdToSplit);
+                if (noteIndex !== -1) {
+                    const noteToSplit = multiWeekNotes[noteIndex];
+                    if (noteToSplit.spanWeeks > 1) {
+                        const originalSpan = noteToSplit.spanWeeks;
+                        const newSpan1 = Math.floor(originalSpan / 2);
+                        const newSpan2 = originalSpan - newSpan1;
+
+                        noteToSplit.spanWeeks = newSpan1;
+
+                        const newNote = {
+                            id: `phase-note-${Date.now()}`, // Unique ID
+                            text: '',
+                            color: defaultPillColor,
+                            startWeekIndex: noteToSplit.startWeekIndex + newSpan1,
+                            spanWeeks: newSpan2
+                        };
+                        multiWeekNotes.splice(noteIndex + 1, 0, newNote); // Insert new note after the original
+                        savePlannerData(); // Save data after modification
+                        renderPlanner();
+                    }
+                }
+            } else if (startWeekIndexForNew !== null && spanWeeksForNew !== null) { // Adding a new note in empty space
+                const newNote = {
+                    id: `phase-note-${Date.now()}`,
+                    text: '',
+                    color: defaultPillColor,
+                    startWeekIndex: startWeekIndexForNew,
+                    spanWeeks: spanWeeksForNew
+                };
+                multiWeekNotes.push(newNote);
+                multiWeekNotes.sort((a, b) => a.startWeekIndex - b.startWeekIndex); // Keep sorted
+                savePlannerData(); // Save data after modification
+                renderPlanner();
+            }
+        }
+
+        function mergeAdjacentPhaseNotes() {
+            multiWeekNotes.sort((a, b) => a.startWeekIndex - b.startWeekIndex); // Ensure sorted
+            for (let i = 0; i < multiWeekNotes.length - 1; i++) {
+                const current = multiWeekNotes[i];
+                const next = multiWeekNotes[i + 1];
+
+                // Check if current note ends exactly where the next note begins
+                if (current.startWeekIndex + current.spanWeeks === next.startWeekIndex) {
+                    // Check if both notes are empty (or have same color and text is empty)
+                    // For simplicity, let's merge if text is empty in both
+                    if (!current.text && !next.text) {
+                        current.spanWeeks += next.spanWeeks;
+                        multiWeekNotes.splice(i + 1, 1); // Remove the next note
+                        i--; // Recheck the current (now merged) note with the new next one
+                    }
+                }
+            }
+            savePlannerData(); // Save data after merge
+        }
+
+
+        // Dragging logic for multi-week notes
+        let isResizing = false;
+        let activeHandle = null;
+        let initialMouseX = 0;
+        let initialSpanWeeks = 0;
+        let initialStartWeekIndex = 0;
+        let currentNoteIdBeingResized = null;
+        let currentNoteBeingResized = null;
+        let adjacentNoteBeingResized = null; // For left handle, the note to its left
+
+        document.addEventListener('mousedown', (e) => {
+            const handle = e.target.dataset.handle;
+            if (handle) {
+                isResizing = true;
+                activeHandle = handle;
+                initialMouseX = e.clientX;
+                const td = e.target.closest('td');
+                currentNoteIdBeingResized = td.dataset.noteId;
+                currentNoteBeingResized = multiWeekNotes.find(note => note.id === currentNoteIdBeingResized);
+                initialSpanWeeks = currentNoteBeingResized.spanWeeks;
+                initialStartWeekIndex = currentNoteBeingResized.startWeekIndex;
+
+                if (activeHandle === 'left') {
+                    // Find the note to the left if resizing from the left
+                    adjacentNoteBeingResized = multiWeekNotes.find(note => 
+                        note.startWeekIndex + note.spanWeeks === initialStartWeekIndex
+                    );
+                }
+
+                document.body.style.cursor = 'ew-resize';
+                document.body.style.userSelect = 'none'; // Prevent text selection during drag
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing || !currentNoteBeingResized || singleColumnPixelWidth === 0) return;
+
+            const deltaX = e.clientX - initialMouseX;
+            const weekDelta = Math.round(deltaX / singleColumnPixelWidth);
+
+            let newSpanWeeks = initialSpanWeeks;
+            let newStartWeekIndex = initialStartWeekIndex;
+
+            if (activeHandle === 'right') {
+                newSpanWeeks = Math.max(1, initialSpanWeeks + weekDelta);
+                // Ensure note doesn't extend beyond total weeks
+                newSpanWeeks = Math.min(newSpanWeeks, allPlannerWeeks.length - initialStartWeekIndex);
+            } else if (activeHandle === 'left') {
+                // Calculate potential new start index based on mouse movement
+                let potentialNewStartWeekIndex = initialStartWeekIndex + weekDelta;
+
+                // Clamp potentialNewStartWeekIndex to valid range
+                potentialNewStartWeekIndex = Math.max(0, potentialNewStartWeekIndex); // Cannot go before week 0
+                potentialNewStartWeekIndex = Math.min(potentialNewStartWeekIndex, initialStartWeekIndex + initialSpanWeeks - 1); // Cannot go past its own end - 1 week
+
+                // If there's an adjacent note to the left, ensure we don't overlap it
+                if (adjacentNoteBeingResized) {
+                    const adjacentEndIndex = adjacentNoteBeingResized.startWeekIndex + adjacentNoteBeingResized.spanWeeks;
+                    potentialNewStartWeekIndex = Math.max(potentialNewStartWeekIndex, adjacentEndIndex);
+                }
+
+                // Calculate the actual change in weeks based on the clamped new start index
+                const actualWeekDelta = potentialNewStartWeekIndex - initialStartWeekIndex;
+
+                newStartWeekIndex = initialStartWeekIndex + actualWeekDelta;
+                newSpanWeeks = initialSpanWeeks - actualWeekDelta;
+
+                // Ensure span is at least 1
+                if (newSpanWeeks < 1) {
+                    newSpanWeeks = 1;
+                    newStartWeekIndex = initialStartWeekIndex + initialSpanWeeks - 1; // Adjust start to keep span 1
+                }
+            }
+
+            // Apply temporary changes for visual feedback during drag
+            currentNoteBeingResized.spanWeeks = newSpanWeeks;
+            currentNoteBeingResized.startWeekIndex = newStartWeekIndex;
+            renderPlanner(); // Re-render to show interim state
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                activeHandle = null;
+                currentNoteIdBeingResized = null;
+                currentNoteBeingResized = null;
+                adjacentNoteBeingResized = null;
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = '';
+                
+                // After resizing, re-sort and re-render to ensure state consistency
+                multiWeekNotes.sort((a, b) => a.startWeekIndex - b.startWeekIndex);
+                // Consider merging adjacent empty notes after a resize
+                mergeAdjacentPhaseNotes();
+                savePlannerData(); // Save data after resize
+                renderPlanner();
+            }
+        });
+
+
+        // PDF Export Function
+        exportPdfBtn.addEventListener('click', () => {
+            const element = document.getElementById('planner-table');
+            // Store original overflow-x setting
+            const originalOverflowX = element.parentElement.style.overflowX;
+            // Temporarily disable overflow-x so html2canvas can capture the full width
+            element.parentElement.style.overflowX = 'visible';
+
+            const opt = {
+                margin: 0.5,
+                filename: 'Graduation_Project_Planning.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 1, // Set scale to 1 for original size
+                    logging: true,
+                    dpi: 192,
+                    letterRendering: true,
+                    width: element.scrollWidth // Crucial: tell html2canvas to render the full scrollable width
+                },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // Try to avoid breaking elements
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                // Revert overflow-x setting after PDF generation
+                element.parentElement.style.overflowX = originalOverflowX;
+            });
+        });
+
+
+        // Event Listeners
+        closeModalBtn.addEventListener('click', closeModal);
+        saveNoteBtn.addEventListener('click', saveNote);
+        deleteNoteBtn.addEventListener('click', deleteCurrentNote);
+        
+        notesModal.addEventListener('click', (event) => {
+            if (event.target === notesModal) { // Click outside modal content
+                closeModal();
+            }
+        });
+        
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !notesModal.classList.contains('invisible')) {
+                closeModal();
+            }
+        });
+
+        colorPicker.addEventListener('change', (event) => {
+            const hexColor = event.target.value;
+            const tailwindClass = colorClassMap[hexColor];
+            updateSelectedSwatch(tailwindClass);
+        });
+
+        colorSwatches.addEventListener('click', (event) => {
+            const swatch = event.target.closest('.color-swatch');
+            if (swatch) {
+                const colorClass = swatch.dataset.color;
+                colorPicker.value = reverseColorClassMap[colorClass];
+                updateSelectedSwatch(colorClass);
+            }
+        });
+
+        // Initial load of data and render
+        loadPlannerData();
+        renderPlanner();
+    </script>
+</body>
+</html>
