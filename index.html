@@ -297,7 +297,6 @@
         </div>
     </div>
 
-    {/* Modal for Notes */}
     <div id="notes-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 opacity-0 invisible z-50">
         <div class="modal-content w-full max-w-md transform scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -311,11 +310,7 @@
                 <label for="color-picker" class="block text-sm font-medium mb-2">Choose Color:</label>
                 <div class="flex items-center space-x-2 mb-4">
                     <div id="color-swatches" class="flex space-x-2">
-                        <div class="color-swatch bg-indigo-500" data-color="bg-indigo-500"></div>
-                        <div class="color-swatch bg-purple-500" data-color="bg-purple-500"></div>
-                        <div class="color-swatch bg-sky-500" data-color="bg-sky-500"></div>
-                        <div class="color-swatch bg-rose-500" data-color="bg-rose-500"></div>
-                    </div>
+                        </div>
                     <input type="color" id="color-picker" class="w-10 h-10 rounded-full border-2 cursor-pointer">
                 </div>
             </div>
@@ -327,7 +322,6 @@
         </div>
     </div>
 
-    {/* Confirmation Modal for Clear All */}
     <div id="confirm-clear-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 opacity-0 invisible z-50">
         <div class="modal-content w-full max-w-sm transform scale-95">
             <h2 class="text-xl font-semibold">Confirm Clear</h2>
@@ -368,6 +362,10 @@
         let undoStack = [];
         let undoStackIndex = -1;
         const MAX_UNDO_STATES = 20; // Limit the number of undo states to prevent memory issues
+
+        // Last used colors for the color picker
+        let lastUsedColors = []; // Stores hex codes or Tailwind classes
+        const MAX_LAST_USED_COLORS = 5;
 
         let currentEditingDate = null; // Format: 'YYYY-MM-DD', 'weekly-specific-week-X', or 'phase-note-X'
         let notes = {}; // Stores daily and single-week 'weekly' notes
@@ -458,12 +456,20 @@
             if (storedMultiWeekNotes) {
                 multiWeekNotes = JSON.parse(storedMultiWeekNotes);
             }
+            const storedLastUsedColors = localStorage.getItem('lastUsedColors');
+            if (storedLastUsedColors) {
+                lastUsedColors = JSON.parse(storedLastUsedColors);
+            } else {
+                // Initialize with empty/default colors if nothing stored
+                lastUsedColors = Array(MAX_LAST_USED_COLORS).fill('#d1d5db'); // Tailwind gray-300 as default colorless
+            }
         }
 
         // Save data to Local Storage
         function savePlannerData() {
             localStorage.setItem('plannerNotes', JSON.stringify(notes));
             localStorage.setItem('multiWeekNotes', JSON.stringify(multiWeekNotes));
+            localStorage.setItem('lastUsedColors', JSON.stringify(lastUsedColors));
         }
 
         /**
@@ -863,6 +869,29 @@
             });
         }
 
+        /**
+         * Renders the "last used colors" swatches in the modal.
+         */
+        function renderLastUsedColors() {
+            colorSwatches.innerHTML = ''; // Clear existing swatches
+
+            // Add last used colors
+            lastUsedColors.forEach(color => {
+                const swatchDiv = document.createElement('div');
+                swatchDiv.className = `color-swatch`;
+                swatchDiv.dataset.color = color; // Store hex or class
+                if (color.startsWith('bg-')) {
+                    swatchDiv.classList.add(color);
+                } else if (color.startsWith('#')) {
+                    swatchDiv.style.backgroundColor = color;
+                } else {
+                    swatchDiv.style.backgroundColor = '#d1d5db'; // Default for "colorless"
+                    swatchDiv.style.border = '1px dashed #9ca3af'; // Dashed border for empty
+                }
+                colorSwatches.appendChild(swatchDiv);
+            });
+        }
+
         function openModal(noteKey) {
             currentEditingDate = noteKey;
             let noteData;
@@ -902,6 +931,7 @@
             colorPicker.value = colorHexForPicker;
             // Pass the stored color (Tailwind class or hex) to update swatches
             updateSelectedSwatch(storedColor); 
+            renderLastUsedColors(); // Render last used colors when modal opens
 
             notesModal.classList.remove('opacity-0', 'invisible');
             notesModal.classList.add('opacity-100', 'visible');
@@ -933,6 +963,9 @@
                         break; // Found a match, no need to check further
                     }
                 }
+
+                // Add to lastUsedColors
+                addLastUsedColor(colorToStore);
 
                 if (currentEditingDate.startsWith('phase-note-')) {
                     const noteIndex = multiWeekNotes.findIndex(note => note.id === currentEditingDate);
@@ -990,17 +1023,40 @@
         }
 
         /**
+         * Adds a color to the lastUsedColors array, maintaining uniqueness and limit.
+         * @param {string} color - The color to add (hex or Tailwind class).
+         */
+        function addLastUsedColor(color) {
+            // Remove if already exists to move it to the front
+            lastUsedColors = lastUsedColors.filter(c => c !== color);
+            lastUsedColors.unshift(color); // Add to the beginning
+            if (lastUsedColors.length > MAX_LAST_USED_COLORS) {
+                lastUsedColors.pop(); // Remove oldest if over limit
+            }
+        }
+
+        /**
          * Updates the 'selected' class on color swatches based on the currently chosen color.
          * @param {string} selectedColorValue - The color value to match (can be Tailwind class or hex).
          */
         function updateSelectedSwatch(selectedColorValue) {
             document.querySelectorAll('.color-swatch').forEach(swatch => {
                 swatch.classList.remove('selected');
-                const swatchTailwindClass = swatch.dataset.color;
-                const swatchHex = reverseColorClassMap[swatchTailwindClass];
+                const swatchDataColor = swatch.dataset.color; // This could be hex or Tailwind class
+                let swatchHex = swatchDataColor;
 
-                // Check if the selected color matches the swatch's Tailwind class or its hex equivalent
-                if (selectedColorValue === swatchTailwindClass || selectedColorValue === swatchHex) {
+                // Convert swatchDataColor to hex if it's a Tailwind class
+                if (swatchDataColor.startsWith('bg-')) {
+                    swatchHex = reverseColorClassMap[swatchDataColor];
+                }
+
+                // Convert selectedColorValue to hex if it's a Tailwind class
+                let selectedHex = selectedColorValue;
+                if (selectedColorValue.startsWith('bg-')) {
+                    selectedHex = reverseColorClassMap[selectedColorValue];
+                }
+                
+                if (selectedHex === swatchHex) {
                     swatch.classList.add('selected');
                 }
             });
