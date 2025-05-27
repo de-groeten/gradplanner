@@ -154,7 +154,7 @@
             font-family: 'MS Gothic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-shadow: 1px 1px 0px rgba(0,0,0,0.2); /* Added subtle text shadow for "fatter" effect */
             padding: 0.5rem 1rem; /* Increased padding */
-            padding-right: 2.5rem; /* Ensure space for plus button */
+            padding-right: 3.5rem; /* More space for plus button to prevent overlap */
             font-size: 16px !important;
             line-height: 1.2;
             position: relative; /* Make pill a positioning context for the plus button */
@@ -164,6 +164,7 @@
             width: 100%; /* Ensure it takes full width of its container */
             height: 100%; /* Ensure it takes full height of its container */
             box-sizing: border-box; /* Include padding in width/height */
+            text-align: center; /* Ensure text is centered initially */
         }
         /* Plus button position inside the pill */
         .note-pill .plus-button { 
@@ -261,14 +262,10 @@
                 <thead>
                     <tr>
                         <th class="p-3 text-left text-sm font-semibold tracking-wider border table-fixed-col day-column-width">Day</th>
-                        {/* Week headers will be injected here by JS */}
-                    </tr>
+                        </tr>
                 </thead>
                 <tbody>
-                    {/* Phase row for multi-week notes */}
-                    {/* Weekly row for single-week notes */}
-                    {/* Day rows will be injected here by JS */}
-                </tbody>
+                    </tbody>
             </table>
         </div>
         <p class="mt-4 text-xs text-center">Planner data for year 2025.</p>
@@ -599,7 +596,7 @@
                 noteContainer.className = 'flex items-center justify-center h-full relative'; /* Changed back to justify-center */
                 const notePill = document.createElement('div');
                 // Added flex-grow to note-pill, increased padding
-                notePill.className = 'px-4 py-2 max-w-full break-words h-auto w-full note-pill'; /* Removed flex-grow */
+                notePill.className = 'px-4 py-2 max-w-full break-words h-auto w-full note-pill'; 
 
                 if (note.text) {
                     notePill.textContent = note.text;
@@ -681,7 +678,7 @@
 
                 // Add '+' button to the right of the note pill if it can be split
                 const plusButton = document.createElement('button');
-                plusButton.className = "absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-indigo-600 text-white text-xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md plus-button";
+                plusButton.className = "absolute right-1 top-1/2 -translate-y-50% w-6 h-6 rounded-full bg-indigo-600 text-white text-xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md plus-button";
                 plusButton.textContent = '+';
                 plusButton.addEventListener('click', (e) => {
                     e.stopPropagation(); // Prevent modal from opening
@@ -1094,7 +1091,6 @@
                 const td = e.target.closest('td');
                 currentNoteIdBeingResized = td.dataset.noteId;
                 currentNoteBeingResized = multiWeekNotes.find(note => note.id === currentNoteIdBeingResized);
-                // Fix: Corrected typo from currentNoteBeingRedesigned to currentNoteBeingResized
                 initialSpanWeeks = currentNoteBeingResized.spanWeeks; 
                 initialStartWeekIndex = currentNoteBeingResized.startWeekIndex;
 
