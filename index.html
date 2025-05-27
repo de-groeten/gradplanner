@@ -1402,10 +1402,16 @@
         colorSwatches.addEventListener('click', (event) => {
             const swatch = event.target.closest('.color-swatch');
             if (swatch) {
-                const colorClass = swatch.dataset.color;
-                const hexColorForSwatch = reverseColorClassMap[colorClass];
-                colorPicker.value = hexColorForSwatch; // Set the native color picker's value
-                updateSelectedSwatch(colorClass); // Update swatches based on the Tailwind class
+                const colorData = swatch.dataset.color; // This could be hex or Tailwind class
+                let hexColorForPicker = colorData;
+
+                // If the stored color is a Tailwind class, convert it to hex for the picker
+                if (colorData.startsWith('bg-')) {
+                    hexColorForPicker = reverseColorClassMap[colorData];
+                }
+                
+                colorPicker.value = hexColorForPicker; // Set the native color picker's value
+                updateSelectedSwatch(colorData); // Update swatches based on the stored data color
             }
         });
 
