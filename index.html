@@ -586,12 +586,16 @@
                 const weeklySpecificNoteKey = `weekly-specific-week-${index}`; // Unique key for this new weekly row
                 td.dataset.date = weeklySpecificNoteKey;
 
-                // Determine if this weekly note's week is in the past
+                // Determine if this weekly note's week is FULLY in the past (Friday of the week has passed)
                 const weekStartDate = new Date(weekData.startDate + 'T00:00:00');
-                const isWeekPast = weekStartDate < today;
+                const weekEndDate = new Date(weekStartDate);
+                weekEndDate.setDate(weekStartDate.getDate() + 4); // Friday of the week
+                const isWeekFullyPast = weekEndDate < today;
 
-                if (isWeekPast) {
+                if (isWeekFullyPast) {
                     td.classList.add('past-day');
+                } else {
+                    td.classList.remove('past-day'); // Ensure it's not greyed if still current/future
                 }
 
                 const noteContainer = document.createElement('div');
@@ -604,16 +608,18 @@
                     notePill.textContent = noteData.text;
                     // Remove any existing Tailwind color classes to ensure inline style takes precedence
                     notePill.classList.remove(...Object.values(colorClassMap), 'text-white');
+                    notePill.style.backgroundColor = ''; // Clear previous inline background color
+                    notePill.style.backgroundImage = ''; // Clear previous background image
+                    notePill.style.color = ''; // Clear previous inline text color
 
-                    if (isWeekPast) {
+                    if (isWeekFullyPast) { // Only grey out if the entire week is past
                         notePill.style.backgroundColor = pastNoteBgColor;
                         notePill.style.color = pastNoteTextColor;
                     } else {
+                        // Apply original color if the week is current or future
                         if (noteData.color && noteData.color.startsWith('bg-')) {
                             notePill.classList.add(noteData.color);
                             notePill.classList.add('text-white');
-                            notePill.style.backgroundColor = '';
-                            notePill.style.color = '';
                         } else if (noteData.color && noteData.color.startsWith('#')) {
                             notePill.style.backgroundColor = noteData.color;
                             notePill.style.color = getContrastTextColor(noteData.color);
@@ -621,8 +627,6 @@
                         } else {
                             notePill.classList.add(defaultPillColor);
                             notePill.classList.add('text-white');
-                            notePill.style.backgroundColor = '';
-                            notePill.style.color = '';
                         }
                     }
                 } else {
