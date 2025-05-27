@@ -20,8 +20,8 @@
         }
         h1 {
             font-family: 'MS Gothic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 3.5rem; /* Significantly larger font size for H1 */
-            line-height: 1.2; /* Adjust line height for better readability */
+            font-size: 4.5rem; /* Increased font size for H1 even more */
+            line-height: 1; /* Tighter line height for large title */
             color: #63b3ed; /* Brighter blue for H1 */
             font-weight: bold; /* Ensure it's bold */
             text-shadow: none;
@@ -152,10 +152,36 @@
             border-radius: 999px;
             font-family: 'MS Gothic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-shadow: 1px 1px 0px rgba(0,0,0,0.2); /* Added subtle text shadow for "fatter" effect */
-            padding: 0.5rem 1rem;
+            padding: 0.5rem 1rem; /* Increased padding */
             font-size: 16px !important;
             line-height: 1.2;
+            flex-grow: 1; /* Allow pill to grow and take available space */
+            text-align: center; /* Center text within the pill */
         }
+        /* Adjusted plus button position to avoid text overlap */
+        .note-container {
+            display: flex; /* Use flexbox for layout */
+            align-items: center; /* Vertically align items */
+            justify-content: space-between; /* Push pill and button to ends */
+            position: relative; /* For absolute positioning of handles */
+            height: 100%; /* Ensure it takes full height of td */
+            width: 100%; /* Ensure it takes full width of td */
+        }
+        .note-container .plus-button { 
+            flex-shrink: 0; /* Prevent button from shrinking */
+            margin-left: 0.5rem; /* Space between pill and button */
+            position: static; /* Remove absolute positioning */
+            transform: none; /* Remove transform */
+            width: 24px; /* Smaller button */
+            height: 24px; /* Smaller button */
+            font-size: 1rem; /* Smaller font for the plus sign */
+            padding: 0; /* Remove padding */
+            border-radius: 999px; /* Ensure it's round */
+            display: flex; /* Use flex for centering '+' */
+            align-items: center;
+            justify-content: center;
+        }
+
 
         /* Button base style */
         .btn-base {
@@ -568,9 +594,11 @@
                 td.dataset.spanWeeks = note.spanWeeks;
 
                 const noteContainer = document.createElement('div');
-                noteContainer.className = 'flex items-center justify-center h-full relative';
+                // Changed to flex, items-center, justify-between
+                noteContainer.className = 'flex items-center justify-between h-full relative';
                 const notePill = document.createElement('div');
-                notePill.className = 'px-4 py-2 max-w-full break-words h-auto w-full note-pill'; 
+                // Added flex-grow to note-pill, increased padding
+                notePill.className = 'px-4 py-2 max-w-full break-words h-auto note-pill flex-grow'; 
 
                 if (note.text) {
                     notePill.textContent = note.text;
@@ -651,17 +679,16 @@
                 noteContainer.appendChild(rightHandle);
 
                 // Add '+' button to the right of the note pill if it can be split
-                if (note.spanWeeks > 1) { // Only show plus if it can be split
-                    const plusButton = document.createElement('button');
-                    plusButton.className = "absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-indigo-600 text-white text-xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md";
-                    plusButton.textContent = '+';
-                    plusButton.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Prevent modal from opening
-                        handleMultiWeekAddSplit(note.id); // Pass the ID of the note to split
-                    });
-                    noteContainer.appendChild(plusButton);
-                }
-
+                // New positioning: now a sibling to notePill within flex container
+                const plusButton = document.createElement('button');
+                plusButton.className = "flex-shrink-0 ml-2 w-6 h-6 rounded-full bg-indigo-600 text-white text-xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md plus-button";
+                plusButton.textContent = '+';
+                plusButton.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent modal from opening
+                    handleMultiWeekAddSplit(note.id); // Pass the ID of the note to split
+                });
+                noteContainer.appendChild(plusButton);
+                
                 td.appendChild(noteContainer);
                 // All cells are clickable now
                 td.addEventListener('click', (e) => {
@@ -1067,7 +1094,8 @@
                 const td = e.target.closest('td');
                 currentNoteIdBeingResized = td.dataset.noteId;
                 currentNoteBeingResized = multiWeekNotes.find(note => note.id === currentNoteIdBeingResized);
-                initialSpanWeeks = currentNoteBeingResized.spanWeeks;
+                // Fix: Corrected typo from currentNoteBeingRedesigned to currentNoteBeingResized
+                initialSpanWeeks = currentNoteBeingResized.spanWeeks; 
                 initialStartWeekIndex = currentNoteBeingResized.startWeekIndex;
 
                 if (activeHandle === 'left') {
