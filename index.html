@@ -130,7 +130,8 @@
             z-index: 20;
             border-radius: 4px;
         }
-        .resize-handle:hover {
+        /* Make handles visible on hover over the entire note pill */
+        .note-pill:hover .resize-handle {
             opacity: 1;
         }
         .resize-handle.left {
@@ -153,25 +154,23 @@
             font-family: 'MS Gothic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-shadow: 1px 1px 0px rgba(0,0,0,0.2); /* Added subtle text shadow for "fatter" effect */
             padding: 0.5rem 1rem; /* Increased padding */
+            padding-right: 2.5rem; /* Ensure space for plus button */
             font-size: 16px !important;
             line-height: 1.2;
-            flex-grow: 1; /* Allow pill to grow and take available space */
-            text-align: center; /* Center text within the pill */
+            position: relative; /* Make pill a positioning context for the plus button */
+            display: flex; /* Use flex to center text horizontally */
+            align-items: center; /* Center text vertically */
+            justify-content: center; /* Center text horizontally */
+            width: 100%; /* Ensure it takes full width of its container */
+            height: 100%; /* Ensure it takes full height of its container */
+            box-sizing: border-box; /* Include padding in width/height */
         }
-        /* Adjusted plus button position to avoid text overlap */
-        .note-container {
-            display: flex; /* Use flexbox for layout */
-            align-items: center; /* Vertically align items */
-            justify-content: space-between; /* Push pill and button to ends */
-            position: relative; /* For absolute positioning of handles */
-            height: 100%; /* Ensure it takes full height of td */
-            width: 100%; /* Ensure it takes full width of td */
-        }
-        .note-container .plus-button { 
-            flex-shrink: 0; /* Prevent button from shrinking */
-            margin-left: 0.5rem; /* Space between pill and button */
-            position: static; /* Remove absolute positioning */
-            transform: none; /* Remove transform */
+        /* Plus button position inside the pill */
+        .note-pill .plus-button { 
+            position: absolute; /* Position absolutely within the note-pill */
+            right: 4px; /* Position from the right edge of the pill */
+            top: 50%;
+            transform: translateY(-50%); /* Vertically center */
             width: 24px; /* Smaller button */
             height: 24px; /* Smaller button */
             font-size: 1rem; /* Smaller font for the plus sign */
@@ -180,6 +179,7 @@
             display: flex; /* Use flex for centering '+' */
             align-items: center;
             justify-content: center;
+            z-index: 21; /* Ensure it's above text and handles */
         }
 
 
@@ -344,6 +344,7 @@
     </div>
 
     <script>
+        window.onload = function() { // Wrap main logic in window.onload
         const year = 2025;
         const plannerTable = document.getElementById('planner-table');
         const notesModal = document.getElementById('notes-modal');
@@ -595,10 +596,10 @@
 
                 const noteContainer = document.createElement('div');
                 // Changed to flex, items-center, justify-between
-                noteContainer.className = 'flex items-center justify-between h-full relative';
+                noteContainer.className = 'flex items-center justify-center h-full relative'; /* Changed back to justify-center */
                 const notePill = document.createElement('div');
                 // Added flex-grow to note-pill, increased padding
-                notePill.className = 'px-4 py-2 max-w-full break-words h-auto note-pill flex-grow'; 
+                notePill.className = 'px-4 py-2 max-w-full break-words h-auto w-full note-pill'; /* Removed flex-grow */
 
                 if (note.text) {
                     notePill.textContent = note.text;
@@ -671,23 +672,22 @@
                 const leftHandle = document.createElement('div');
                 leftHandle.className = 'resize-handle left';
                 leftHandle.dataset.handle = 'left';
-                noteContainer.appendChild(leftHandle);
-
+                notePill.appendChild(leftHandle); // Append to notePill
+                
                 const rightHandle = document.createElement('div');
                 rightHandle.className = 'resize-handle right';
                 rightHandle.dataset.handle = 'right';
-                noteContainer.appendChild(rightHandle);
+                notePill.appendChild(rightHandle); // Append to notePill
 
                 // Add '+' button to the right of the note pill if it can be split
-                // New positioning: now a sibling to notePill within flex container
                 const plusButton = document.createElement('button');
-                plusButton.className = "flex-shrink-0 ml-2 w-6 h-6 rounded-full bg-indigo-600 text-white text-xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md plus-button";
+                plusButton.className = "absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-indigo-600 text-white text-xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md plus-button";
                 plusButton.textContent = '+';
                 plusButton.addEventListener('click', (e) => {
                     e.stopPropagation(); // Prevent modal from opening
                     handleMultiWeekAddSplit(note.id); // Pass the ID of the note to split
                 });
-                noteContainer.appendChild(plusButton);
+                notePill.appendChild(plusButton); // Append to notePill
                 
                 td.appendChild(noteContainer);
                 // All cells are clickable now
@@ -1362,6 +1362,7 @@
         loadPlannerData();
         renderPlanner();
         saveState(); // Save the initial state after loading and rendering
-    </script>
+    }; // End of window.onload
+</script>
 </body>
 </html>
