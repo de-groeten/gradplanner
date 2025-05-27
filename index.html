@@ -167,11 +167,10 @@
             text-align: center; /* Ensure text is centered initially */
         }
         /* Plus button position inside the pill */
-        .note-pill .plus-button { 
-            position: absolute; /* Position absolutely within the note-pill */
-            right: 4px; /* Position from the right edge of the pill */
-            top: 50%;
-            transform: translateY(-50%); /* Vertically center */
+        .plus-button { /* Moved this class definition outside .note-pill */
+            position: absolute; /* Position absolutely within the parent TD */
+            right: 4px; /* Position from the right edge of the cell */
+            top: 4px; /* Position from the top edge of the cell */
             width: 24px; /* Smaller button */
             height: 24px; /* Smaller button */
             font-size: 1rem; /* Smaller font for the plus sign */
@@ -262,10 +261,10 @@
                 <thead>
                     <tr>
                         <th class="p-3 text-left text-sm font-semibold tracking-wider border table-fixed-col day-column-width">Day</th>
-                        </tr>
+                    </tr>
                 </thead>
                 <tbody>
-                    </tbody>
+                </tbody>
             </table>
         </div>
         <p class="mt-4 text-xs text-center">Planner data for year 2025.</p>
@@ -676,15 +675,15 @@
                 rightHandle.dataset.handle = 'right';
                 notePill.appendChild(rightHandle); // Append to notePill
 
-                // Add '+' button to the right of the note pill if it can be split
+                // Add '+' button to the top-right of the TD (cell)
                 const plusButton = document.createElement('button');
-                plusButton.className = "absolute right-1 top-1/2 -translate-y-50% w-6 h-6 rounded-full bg-indigo-600 text-white text-xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md plus-button";
+                plusButton.className = "absolute right-1 top-1 w-6 h-6 rounded-full bg-indigo-600 text-white text-xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md";
                 plusButton.textContent = '+';
                 plusButton.addEventListener('click', (e) => {
                     e.stopPropagation(); // Prevent modal from opening
                     handleMultiWeekAddSplit(note.id); // Pass the ID of the note to split
                 });
-                notePill.appendChild(plusButton); // Append to notePill
+                td.appendChild(plusButton); // Append directly to td
                 
                 td.appendChild(noteContainer);
                 // All cells are clickable now
