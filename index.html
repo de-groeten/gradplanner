@@ -6,24 +6,30 @@
     <title>Graduation Project Planning</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ms+Madi&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'VT323', monospace; /* Pixelated font */
-            background-color: #D4E5F5; /* Light blue background */
-            /* Blueprint grid pattern */
+            font-family: 'MS Gothic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a202c; /* Dark background */
+            /* Subtle blueprint grid pattern for night mode */
             background-image: 
-                linear-gradient(to right, rgba(150, 180, 210, 0.5) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(150, 180, 210, 0.5) 1px, transparent 1px);
-            background-size: 20px 20px; /* Adjust grid size as needed */
-            color: #333; /* Darker text for contrast */
-            -webkit-font-smoothing: none; /* For pixelated font effect */
-            -moz-osx-font-smoothing: grayscale; /* For pixelated font effect */
-            text-rendering: optimizeSpeed; /* For pixelated font effect */
+                linear-gradient(to right, rgba(100, 110, 120, 0.2) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(100, 110, 120, 0.2) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: #e2e8f0; /* Light text for contrast */
         }
-        h1, h2 {
-            font-family: 'VT323', monospace; /* Ensure headings also use pixel font */
-            text-shadow: 2px 2px 0px rgba(0,0,0,0.2); /* Simple blocky shadow */
+        h1 {
+            font-family: 'MS Gothic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 3.5rem; /* Significantly larger font size for H1 */
+            line-height: 1.2; /* Adjust line height for better readability */
+            color: #63b3ed; /* Brighter blue for H1 */
+            font-weight: bold; /* Ensure it's bold */
+            text-shadow: none;
+        }
+        h2 {
+            font-family: 'MS Gothic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #90cdf4; /* Lighter blue for other headings */
+            text-shadow: none;
         }
         .table-fixed-col {
             position: sticky;
@@ -35,9 +41,22 @@
         }
         .modal-content {
             transition: transform 0.3s ease-in-out;
-            border-radius: 0px; /* Sharp corners */
-            border: 4px solid #50A0E0; /* Blue border */
-            box-shadow: 6px 6px 0px rgba(0,0,0,0.3); /* Blocky shadow */
+            border-radius: 4px;
+            border: 1px solid #4a5568; /* Darker grey border */
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3), 0 4px 6px -2px rgba(0,0,0,0.15); /* Darker shadow */
+            background-color: #2d3748; /* Dark modal background */
+            color: #e2e8f0; /* Light text */
+        }
+        .modal-content h2 {
+            color: #90cdf4; /* Lighter blue for modal headings */
+        }
+        .modal-content p {
+            color: #cbd5e0; /* Lighter grey for modal text */
+        }
+        .modal-content textarea {
+            background-color: #4a5568; /* Darker input background */
+            color: #e2e8f0; /* Light input text */
+            border-color: #6366f1; /* Indigo border for focus */
         }
         /* Custom scrollbar for webkit browsers */
         .custom-scrollbar::-webkit-scrollbar {
@@ -45,33 +64,44 @@
             height: 8px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: #A0B0C0; /* Greyish blue track */
-            border-radius: 0px;
+            background: #2d3748; /* Dark grey track */
+            border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #50A0E0; /* Blue thumb */
-            border-radius: 0px;
+            background: #6366f1; /* Indigo thumb */
+            border-radius: 10px;
         }
         .custom-scrollbar::-webkit-webkit-scrollbar-thumb:hover {
-            background: #3080C0; /* Darker blue on hover */
+            background: #4f46e5; /* Darker indigo on hover */
         }
-        /* Removed table-layout: fixed to allow auto-adjusting column widths */
         table {
             width: auto;
             min-width: 100%;
-            border-collapse: collapse; /* Ensure borders are collapsed */
-            border: 2px solid #50A0E0; /* Outer table border */
+            border-collapse: collapse;
+            border: 1px solid #4a5568; /* Darker outer table border */
+            background-color: #2d3748; /* Dark table background */
         }
         th, td {
             overflow-wrap: break-word;
             white-space: normal;
             padding: 0.5rem 0.75rem;
-            border: 1px solid #A0B0C0; /* Inner cell borders */
-            font-size: 0.875rem; /* text-sm */
+            border: 1px solid #4a5568; /* Darker inner cell borders */
+            color: #e2e8f0; /* Light text for table cells */
         }
-        /* Specific width for the Day column */
+        /* Table header specific styles */
+        thead tr {
+            background-color: #2a4365; /* Dark blue for header row */
+            color: #90cdf4; /* Lighter blue text for header */
+        }
+        thead th.table-fixed-col {
+            background-color: #2a4365; /* Ensure sticky header also dark */
+        }
+        tbody th.table-fixed-col {
+            background-color: #2d3748; /* Dark grey for sticky day column */
+        }
+
         .day-column-width {
-            width: 128px; /* w-32 */
+            width: 128px;
             min-width: 128px;
         }
 
@@ -79,13 +109,13 @@
         .color-swatch {
             width: 24px;
             height: 24px;
-            border-radius: 0px; /* Sharp corners */
+            border-radius: 4px;
             cursor: pointer;
             border: 2px solid transparent;
             transition: border-color 0.15s ease-in-out;
         }
         .color-swatch.selected {
-            border-color: #3080C0; /* Darker blue selection border */
+            border-color: #90cdf4; /* Lighter blue selection border */
         }
         /* Styles for multi-week note handles */
         .resize-handle {
@@ -94,11 +124,11 @@
             bottom: 0;
             width: 8px;
             cursor: ew-resize;
-            background-color: rgba(80, 160, 224, 0.5); /* Blue with transparency */
+            background-color: rgba(99, 102, 241, 0.5); /* Indigo with transparency */
             opacity: 0;
             transition: opacity 0.15s ease-in-out;
             z-index: 20;
-            border-radius: 0px; /* Sharp corners */
+            border-radius: 4px;
         }
         .resize-handle:hover {
             opacity: 1;
@@ -109,101 +139,86 @@
         .resize-handle.right {
             right: 0;
         }
-        /* Style for past days - only subtle background change for the cell */
+        /* Style for past days */
         .past-day {
-            background-color: #E0E8F0 !important; /* Lighter grey-blue for past days */
+            background-color: #222a36 !important; /* Slightly darker background for past cells */
+            color: #a0aec0 !important; /* Greyer text for past cells */
         }
         .past-day:hover {
-            background-color: #C0D0E0 !important; /* Slightly darker grey-blue on hover */
+            background-color: #2a323e !important; /* Darker hover for past days */
         }
         /* Note pill styling */
         .note-pill {
-            border-radius: 0px; /* Sharp corners */
-            font-family: 'VT323', monospace;
-            text-shadow: 1px 1px 0px rgba(0,0,0,0.2); /* Subtle shadow for notes */
+            border-radius: 999px;
+            font-family: 'MS Gothic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.2); /* Added subtle text shadow for "fatter" effect */
+            padding: 0.5rem 1rem;
+            font-size: 16px !important;
+            line-height: 1.2;
         }
 
         /* Button base style */
         .btn-base {
-            padding: 0.5rem 1rem; /* px-4 py-2 equivalent */
-            border-radius: 0px; /* Sharp corners */
-            border: 2px solid #3080C0; /* Darker blue border */
-            border-bottom: 4px solid #3080C0; /* Simulate depth */
-            border-right: 4px solid #3080C0; /* Simulate depth */
-            font-family: 'VT323', monospace;
-            text-shadow: 1px 1px 0px rgba(0,0,0,0.2); /* Pixelated shadow for text */
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            border: 1px solid #6366f1; /* Indigo-500 border */
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+            font-family: 'MS Gothic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-shadow: none;
             transition: all 0.1s ease-in-out;
-            display: inline-flex; /* For icon alignment */
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            line-height: 1; /* Adjust line height for pixel font */
-            font-size: 1rem; /* Default button font size */
+            line-height: 1.2;
+            font-size: 1rem;
+            color: white; /* Default white text for buttons */
         }
         .btn-base:hover {
-            transform: translate(2px, 2px); /* "Press" effect */
-            border-bottom: 2px solid #3080C0;
-            border-right: 2px solid #3080C0;
-            box-shadow: none; /* Remove default shadow if any */
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
         }
         .btn-base:active {
-            transform: translate(4px, 4px);
-            border-bottom: 0px solid #3080C0;
-            border-right: 0px solid #3080C0;
+            transform: translateY(0);
+            box-shadow: none;
         }
 
         /* Specific button colors */
         #export-pdf-btn {
-            background-color: #50A0E0; /* Blue */
-            color: white;
+            background-color: #6366f1; /* Tailwind indigo-500 */
+            border-color: #4f46e5; /* Darker indigo */
         }
         #export-data-btn {
-            background-color: #50A0E0; /* Blue */
-            color: white;
+            background-color: #3b82f6; /* Tailwind blue-500 */
+            border-color: #2563eb; /* Darker blue */
         }
         #upload-data-btn {
-            background-color: #50A0E0; /* Blue */
-            color: white;
+            background-color: #22c55e; /* Tailwind green-500 */
+            border-color: #16a34a; /* Darker green */
         }
         #clear-all-btn {
-            background-color: #F05050; /* Red */
-            color: white;
-            font-size: 0.875rem; /* text-sm, smaller as requested */
-            padding: 0.375rem 0.75rem; /* px-3 py-1.5 equivalent */
-            border: 2px solid #C03030; /* Darker red border */
-            border-bottom: 4px solid #C03030;
-            border-right: 4px solid #C03030;
-        }
-        #clear-all-btn:hover {
-            border-bottom: 2px solid #C03030;
-            border-right: 2px solid #C03030;
-        }
-        #clear-all-btn:active {
-            border-bottom: 0px solid #C03030;
-            border-right: 0px solid #C03030;
+            background-color: #ef4444; /* Tailwind red-500 */
+            font-size: 0.875rem;
+            padding: 0.375rem 0.75rem;
+            border-color: #dc2626; /* Darker red */
         }
 
         /* Modal buttons */
-        #save-note-btn, #delete-note-btn, #confirm-no-btn, #confirm-yes-btn {
-            @apply btn-base; /* Inherit base button styles */
-        }
         #save-note-btn {
-            background-color: #50A0E0; /* Blue */
-            color: white;
-            border-color: #3080C0;
+            background-color: #6366f1; /* Tailwind indigo-500 */
+            border-color: #4f46e5;
         }
         #delete-note-btn, #confirm-yes-btn {
-            background-color: #F05050; /* Red */
-            color: white;
-            border-color: #C03030;
+            background-color: #ef4444; /* Tailwind red-500 */
+            border-color: #dc2626;
         }
         #confirm-no-btn {
-            background-color: #A0B0C0; /* Grey */
-            color: #333;
-            border-color: #8090A0;
+            background-color: #4a5568; /* Darker grey */
+            color: #e2e8f0; /* Light text */
+            border-color: #6366f1; /* Indigo border */
         }
         /* Icons in buttons */
         .btn-base svg {
-            margin-right: 0.5rem; /* space-x-2 equivalent */
+            margin-right: 0.5rem;
         }
     </style>
 </head>
@@ -211,15 +226,15 @@
 
     <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-full">
         <header class="mb-8 text-center">
-            <h1 class="text-3xl sm:text-4xl font-bold text-indigo-800">Graduation Project Planning</h1>
-            <p class="mt-2 text-stone-600">Plan your schedule from May to October 2025. Click any date to add notes.</p>
+            <h1>Graduation Project Planning</h1>
+            <p class="mt-2">Plan your schedule from May to October 2025. Click any date to add notes.</p>
         </header>
 
         <div class="overflow-x-auto custom-scrollbar bg-white shadow-xl rounded-lg">
             <table id="planner-table" class="border-collapse">
                 <thead>
-                    <tr class="bg-indigo-800 text-white">
-                        <th class="p-3 text-left text-sm font-semibold tracking-wider border border-indigo-700 table-fixed-col bg-indigo-800 day-column-width">Day</th>
+                    <tr>
+                        <th class="p-3 text-left text-sm font-semibold tracking-wider border table-fixed-col day-column-width">Day</th>
                         {/* Week headers will be injected here by JS */}
                     </tr>
                 </thead>
@@ -230,7 +245,7 @@
                 </tbody>
             </table>
         </div>
-        <p class="mt-4 text-xs text-center text-stone-500">Planner data for year 2025.</p>
+        <p class="mt-4 text-xs text-center">Planner data for year 2025.</p>
 
         <div class="mt-8 flex justify-center space-x-4">
             <button id="export-pdf-btn" class="btn-base">
@@ -262,16 +277,16 @@
 
     {/* Modal for Notes */}
     <div id="notes-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 opacity-0 invisible z-50">
-        <div class="modal-content bg-white p-6 rounded-lg shadow-2xl w-full max-w-md transform scale-95">
+        <div class="modal-content w-full max-w-md transform scale-95">
             <div class="flex justify-between items-center mb-4">
-                <h2 id="modal-title" class="text-2xl font-semibold text-indigo-800">Add Note</h2>
+                <h2 id="modal-title" class="text-2xl font-semibold">Add Note</h2>
                 <button id="close-modal-btn" class="text-stone-500 hover:text-stone-700 text-2xl">&times;</button>
             </div>
-            <p id="modal-date-display" class="mb-3 text-stone-600"></p>
-            <textarea id="note-input" rows="5" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-indigo-700 focus:border-indigo-700" placeholder="Enter your notes here..."></textarea>
+            <p id="modal-date-display" class="mb-3"></p>
+            <textarea id="note-input" rows="5" class="w-full p-3 border rounded-lg focus:ring-2" placeholder="Enter your notes here..."></textarea>
             
             <div class="mt-4">
-                <label for="color-picker" class="block text-sm font-medium text-stone-700 mb-2">Choose Color:</label>
+                <label for="color-picker" class="block text-sm font-medium mb-2">Choose Color:</label>
                 <div class="flex items-center space-x-2 mb-4">
                     <div id="color-swatches" class="flex space-x-2">
                         <div class="color-swatch bg-indigo-500" data-color="bg-indigo-500"></div>
@@ -279,7 +294,7 @@
                         <div class="color-swatch bg-sky-500" data-color="bg-sky-500"></div>
                         <div class="color-swatch bg-rose-500" data-color="bg-rose-500"></div>
                     </div>
-                    <input type="color" id="color-picker" class="w-10 h-10 rounded-full border-2 border-stone-300 cursor-pointer">
+                    <input type="color" id="color-picker" class="w-10 h-10 rounded-full border-2 cursor-pointer">
                 </div>
             </div>
 
@@ -292,9 +307,9 @@
 
     {/* Confirmation Modal for Clear All */}
     <div id="confirm-clear-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 opacity-0 invisible z-50">
-        <div class="modal-content bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm transform scale-95">
-            <h2 class="text-xl font-semibold text-indigo-800 mb-4">Confirm Clear</h2>
-            <p class="mb-6 text-stone-700">Are you sure? Did you export?</p>
+        <div class="modal-content w-full max-w-sm transform scale-95">
+            <h2 class="text-xl font-semibold">Confirm Clear</h2>
+            <p class="mb-6">Are you sure? Did you export?</p>
             <div class="flex justify-end space-x-3">
                 <button id="confirm-no-btn" class="btn-base">No</button>
                 <button id="confirm-yes-btn" class="btn-base">Yes, Clear All</button>
@@ -526,7 +541,7 @@
 
             // Add the 'Phase' row for multi-week notes
             const phaseTr = document.createElement('tr');
-            phaseTr.className = 'bg-white';
+            phaseTr.className = ''; /* Removed bg-white */
             const phaseTh = document.createElement('th');
             phaseTh.className = "p-3 text-left text-sm font-medium border border-stone-300 table-fixed-col bg-blue-100 day-column-width";
             phaseTh.textContent = 'Phase';
@@ -555,7 +570,7 @@
                 const noteContainer = document.createElement('div');
                 noteContainer.className = 'flex items-center justify-center h-full relative';
                 const notePill = document.createElement('div');
-                notePill.className = 'text-xs rounded-full px-2 py-1 max-w-full break-words h-auto w-full note-pill'; // Added note-pill class
+                notePill.className = 'px-4 py-2 max-w-full break-words h-auto w-full note-pill'; 
 
                 if (note.text) {
                     notePill.textContent = note.text;
@@ -679,7 +694,7 @@
 
             // Add the new 'Weekly' row (like weekday rows)
             const weeklyRowTr = document.createElement('tr');
-            weeklyRowTr.className = 'bg-blue-50'; // Consistent background
+            weeklyRowTr.className = ''; /* Removed bg-blue-50 */
             const weeklyRowTh = document.createElement('th');
             weeklyRowTh.className = "p-3 text-left text-sm font-medium border border-stone-300 table-fixed-col bg-blue-100 day-column-width";
             weeklyRowTh.textContent = 'Weekly';
@@ -706,7 +721,7 @@
                 const noteContainer = document.createElement('div');
                 noteContainer.className = 'flex items-center justify-center h-full'; 
                 const notePill = document.createElement('div');
-                notePill.className = 'text-xs rounded-full px-2 py-1 max-w-full break-words h-auto note-pill'; // Added note-pill class
+                notePill.className = 'px-4 py-2 max-w-full break-words h-auto note-pill'; 
 
                 const noteData = notes[weeklySpecificNoteKey];
                 if (noteData && noteData.text) {
@@ -752,7 +767,7 @@
             // Populate body for days of the week (Monday-Friday)
             daysOfWeek.forEach((dayName, dayIndex) => {
                 const tr = document.createElement('tr');
-                tr.className = (dayIndex + 1) % 2 === 0 ? 'bg-blue-50' : 'bg-white';
+                tr.className = ''; /* Removed alternating bg-blue-50 / bg-white */
                 
                 const thDayName = document.createElement('th');
                 thDayName.className = "p-3 text-left text-sm font-medium border border-stone-300 table-fixed-col bg-blue-100 day-column-width";
@@ -772,7 +787,7 @@
                     const noteContainer = document.createElement('div');
                     noteContainer.className = 'flex items-center justify-center h-full'; 
                     const notePill = document.createElement('div');
-                    notePill.className = 'text-xs rounded-full px-2 py-1 max-w-full break-words h-auto note-pill'; // Added note-pill class
+                    notePill.className = 'px-4 py-2 max-w-full break-words h-auto note-pill'; 
 
                     const noteData = notes[dateStr];
                     if (noteData && noteData.text) {
