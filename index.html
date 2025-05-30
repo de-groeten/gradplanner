@@ -12,7 +12,7 @@
             font-family: 'MS Gothic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #1a202c; /* Dark background */
             /* Subtle blueprint grid pattern for night mode */
-            background-image: 
+            background-image:
                 linear-gradient(to right, rgba(100, 110, 120, 0.2) 1px, transparent 1px),
                 linear-gradient(to bottom, rgba(100, 110, 120, 0.2) 1px, transparent 1px);
             background-size: 20px 20px;
@@ -139,6 +139,9 @@
         }
         .resize-handle.right {
             right: 0;
+            /* Reverted to full height as per new strategy */
+            top: 0;
+            height: 100%;
         }
         /* Style for past days */
         .past-day {
@@ -619,14 +622,35 @@
 
             let currentPhaseWeekIndex = 0;
             multiWeekNotes.forEach(note => {
-                // Fill any empty cells before this note starts
+                // Fill any empty cells *before* this note starts
                 if (note.startWeekIndex > currentPhaseWeekIndex) {
                     const emptyGapTd = document.createElement('td');
                     emptyGapTd.colSpan = note.startWeekIndex - currentPhaseWeekIndex;
-                    emptyGapTd.className = "p-1 sm:p-3 text-center text-sm border border-stone-300 min-h-[200px] h-auto align-top relative";
+                    emptyGapTd.className = "p-1 sm:p-3 text-center text-sm border border-stone-300 min-h-[200px] h-auto align-top relative hover:bg-indigo-50 transition duration-150 cursor-pointer";
+                    emptyGapTd.dataset.type = 'new-phase-slot'; // Mark as new slot
+                    emptyGapTd.dataset.startWeekIndex = currentPhaseWeekIndex;
+                    emptyGapTd.dataset.spanWeeks = note.startWeekIndex - currentPhaseWeekIndex;
+                    emptyGapTd.addEventListener('click', (e) => {
+                        // Only open modal if not clicking a resize handle or plus button (though plus button is not here)
+                        if (!e.target.dataset.handle && e.target.tagName !== 'BUTTON') {
+                            openModal('new-phase-slot', emptyGapTd.dataset.startWeekIndex, emptyGapTd.dataset.spanWeeks);
+                        }
+                    });
+                    // Add a '+' button to the empty slot if it's large enough for visual cue
+                    if (emptyGapTd.colSpan >= 1) { // Only show plus if it spans at least one week
+                        const plusButton = document.createElement('button');
+                        plusButton.className = "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-indigo-600 text-white text-3xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md";
+                        plusButton.textContent = '+';
+                        plusButton.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Prevent parent td click
+                            openModal('new-phase-slot', emptyGapTd.dataset.startWeekIndex, emptyGapTd.dataset.spanWeeks);
+                        });
+                        emptyGapTd.appendChild(plusButton);
+                    }
                     phaseTr.appendChild(emptyGapTd);
                 }
 
+                // Now render the actual note
                 const td = document.createElement('td');
                 td.colSpan = note.spanWeeks;
                 td.className = "p-1 sm:p-3 text-center text-sm border border-stone-300 min-h-[200px] h-auto align-top relative hover:bg-indigo-50 transition duration-150 cursor-pointer";
@@ -634,11 +658,7 @@
                 td.dataset.startWeekIndex = note.startWeekIndex;
                 td.dataset.spanWeeks = note.spanWeeks;
 
-                const noteContainer = document.createElement('div');
-                // Changed to flex, items-center, justify-between
-                noteContainer.className = 'flex items-center justify-center h-full relative'; /* Changed back to justify-center */
                 const notePill = document.createElement('div');
-                // Added flex-grow to note-pill, increased padding
                 notePill.className = 'px-4 py-2 max-w-full break-words h-auto w-full note-pill'; 
 
                 if (note.text) {
@@ -706,28 +726,18 @@
                          td.classList.remove('past-day');
                     }
                 }
-                noteContainer.appendChild(notePill);
+                td.appendChild(notePill); // Append notePill directly to td
 
-                // Add resize handles
+                // Add resize handles to the notePill
                 const leftHandle = document.createElement('div');
                 leftHandle.className = 'resize-handle left';
                 leftHandle.dataset.handle = 'left';
-                notePill.appendChild(leftHandle); // Append to notePill
+                notePill.appendChild(leftHandle);
                 
                 const rightHandle = document.createElement('div');
                 rightHandle.className = 'resize-handle right';
                 rightHandle.dataset.handle = 'right';
-                notePill.appendChild(rightHandle); // Append to notePill
-
-                // Add '+' button to the top-right of the TD (cell)
-                const plusButton = document.createElement('button');
-                plusButton.className = "absolute right-1 top-1 w-6 h-6 rounded-full bg-indigo-600 text-white text-xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md";
-                plusButton.textContent = '+';
-                plusButton.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent modal from opening
-                    handleMultiWeekAddSplit(note.id); // Pass the ID of the note to split
-                });
-                td.appendChild(plusButton); // Append directly to td
+                notePill.appendChild(rightHandle);
 
                 // Add exclamation mark if note has it
                 if (note.hasExclamation) {
@@ -737,7 +747,6 @@
                     notePill.appendChild(exclamationMarkDiv); // Append to the notePill
                 }
                 
-                td.appendChild(noteContainer);
                 // All cells are clickable now
                 td.addEventListener('click', (e) => {
                     if (!e.target.dataset.handle && e.target.tagName !== 'BUTTON') { // Only open modal if not clicking a resize handle or plus button
@@ -748,21 +757,33 @@
                 currentPhaseWeekIndex = note.startWeekIndex + note.spanWeeks;
             });
 
-            // Add a '+' button in the remaining empty space after all phase notes
+            // Fill any remaining empty cells after the last note
+            // This is the "add new note" button in the last empty slot
             if (currentPhaseWeekIndex < allPlannerWeeks.length) {
                 const remainingSpan = allPlannerWeeks.length - currentPhaseWeekIndex;
-                const plusButtonTd = document.createElement('td');
-                plusButtonTd.colSpan = remainingSpan;
-                plusButtonTd.className = "p-1 sm:p-3 text-center text-sm border border-stone-300 min-h-[200px] h-auto align-top relative";
-                const plusButton = document.createElement('button');
-                plusButton.className = "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-indigo-600 text-white text-3xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md";
-                plusButton.textContent = '+';
-                plusButton.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent any parent click handlers
-                    handleMultiWeekAddSplit(null, currentPhaseWeekIndex, remainingSpan); // Indicate adding a new note
+                const emptyGapTd = document.createElement('td');
+                emptyGapTd.colSpan = remainingSpan;
+                emptyGapTd.className = "p-1 sm:p-3 text-center text-sm border border-stone-300 min-h-[200px] h-auto align-top relative hover:bg-indigo-50 transition duration-150 cursor-pointer";
+                emptyGapTd.dataset.type = 'new-phase-slot'; // Mark as new slot
+                emptyGapTd.dataset.startWeekIndex = currentPhaseWeekIndex;
+                emptyGapTd.dataset.spanWeeks = remainingSpan;
+                emptyGapTd.addEventListener('click', (e) => {
+                    if (!e.target.dataset.handle && e.target.tagName !== 'BUTTON') {
+                        openModal('new-phase-slot', emptyGapTd.dataset.startWeekIndex, emptyGapTd.dataset.spanWeeks);
+                    }
                 });
-                plusButtonTd.appendChild(plusButton);
-                phaseTr.appendChild(plusButtonTd);
+                // Add a '+' button to the empty slot if it's large enough for visual cue
+                if (emptyGapTd.colSpan >= 1) {
+                    const plusButton = document.createElement('button');
+                    plusButton.className = "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-indigo-600 text-white text-3xl flex items-center justify-center hover:bg-indigo-700 transition duration-150 shadow-md";
+                    plusButton.textContent = '+';
+                    plusButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openModal('new-phase-slot', emptyGapTd.dataset.startWeekIndex, emptyGapTd.dataset.spanWeeks);
+                    });
+                    emptyGapTd.appendChild(plusButton);
+                }
+                phaseTr.appendChild(emptyGapTd);
             }
             tableBody.appendChild(phaseTr);
 
@@ -793,8 +814,6 @@
                     td.classList.remove('past-day'); // Ensure it's not greyed if still current/future
                 }
 
-                const noteContainer = document.createElement('div');
-                noteContainer.className = 'flex items-center justify-center h-full'; 
                 const notePill = document.createElement('div');
                 notePill.className = 'px-4 py-2 max-w-full break-words h-auto note-pill'; 
 
@@ -838,8 +857,7 @@
                     notePill.style.color = '';
                     notePill.classList.remove(...Object.values(colorClassMap), 'text-white');
                 }
-                noteContainer.appendChild(notePill);
-                td.appendChild(noteContainer);
+                td.appendChild(notePill); // Append notePill directly to td
                 td.addEventListener('click', () => openModal(weeklySpecificNoteKey));
                 weeklyRowTr.appendChild(td);
             });
@@ -866,8 +884,6 @@
                     const dateStr = formatDate(currentDate);
                     td.dataset.date = dateStr;
 
-                    const noteContainer = document.createElement('div');
-                    noteContainer.className = 'flex items-center justify-center h-full'; 
                     const notePill = document.createElement('div');
                     notePill.className = 'px-4 py-2 max-w-full break-words h-auto note-pill'; 
 
@@ -885,8 +901,6 @@
                             if (noteData.color && noteData.color.startsWith('bg-')) {
                                 notePill.classList.add(noteData.color);
                                 notePill.classList.add('text-white');
-                                notePill.style.backgroundColor = '';
-                                notePill.style.color = '';
                             } else if (noteData.color && noteData.color.startsWith('#')) {
                                 notePill.style.backgroundColor = noteData.color;
                                 notePill.style.color = getContrastTextColor(noteData.color);
@@ -910,8 +924,7 @@
                         notePill.style.color = '';
                         notePill.classList.remove(...Object.values(colorClassMap), 'text-white');
                     }
-                    noteContainer.appendChild(notePill);
-                    td.appendChild(noteContainer);
+                    td.appendChild(notePill); // Append notePill directly to td
 
                     // Add 'past-day' class to the cell if the date is in the past
                     if (currentDate < today) {
@@ -950,50 +963,64 @@
             });
         }
 
-        function openModal(noteKey) {
-            currentEditingDate = noteKey;
+        function openModal(noteKey, newSlotStartWeekIndex = null, newSlotSpanWeeks = null) {
             let noteData;
             let storedColor = ''; // Will hold either Tailwind class or hex
             let hasExclamation = false; // Default for new notes
 
-            if (noteKey.startsWith('phase-note-')) {
+            if (noteKey === 'new-phase-slot') {
+                // This is a new phase note being created by clicking an empty slot
+                const newId = `phase-note-${Date.now()}`;
+                noteData = {
+                    id: newId,
+                    text: '',
+                    color: defaultPillColor,
+                    startWeekIndex: parseInt(newSlotStartWeekIndex),
+                    spanWeeks: parseInt(newSlotSpanWeeks),
+                    hasExclamation: false
+                };
+                multiWeekNotes.push(noteData);
+                multiWeekNotes.sort((a, b) => a.startWeekIndex - b.startWeekIndex);
+                savePlannerData();
+                renderPlanner(); // Re-render to show the new empty note immediately
+                currentEditingDate = newId; // Set current editing date to the new note's ID
+            } else if (noteKey.startsWith('phase-note-')) {
                 noteData = multiWeekNotes.find(note => note.id === noteKey) || { text: '', color: defaultPillColor, hasExclamation: false };
-                modalTitle.textContent = `Phase Note`;
-                modalDateDisplay.textContent = `Weeks: ${noteData.startWeekIndex + 1} - ${noteData.startWeekIndex + noteData.spanWeeks}`;
+                currentEditingDate = noteKey;
             } else if (noteKey.startsWith('weekly-specific-week-')) {
                 const weekIndex = parseInt(noteKey.split('-')[3]);
                 noteData = notes[noteKey] || { text: '', color: defaultPillColor, hasExclamation: false };
-                modalTitle.textContent = `Weekly Notes for Week ${allPlannerWeeks[weekIndex].weekNum}`;
-                modalDateDisplay.textContent = `Type: Weekly Notes`;
+                currentEditingDate = noteKey;
             } else { // Daily notes
                 const dateObj = new Date(noteKey + 'T00:00:00');
                 noteData = notes[noteKey] || { text: '', color: defaultPillColor, hasExclamation: false };
-                modalTitle.textContent = `Notes for ${dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
-                modalDateDisplay.textContent = `Date: ${noteKey}`;
+                currentEditingDate = noteKey;
             }
             
+            modalTitle.textContent = noteKey.startsWith('phase-note-') ? `Phase Note` : 
+                                     noteKey.startsWith('weekly-specific-week-') ? `Weekly Notes for Week ${allPlannerWeeks[parseInt(noteKey.split('-')[3])].weekNum}` :
+                                     `Notes for ${new Date(noteKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+            modalDateDisplay.textContent = noteKey.startsWith('phase-note-') ? `Weeks: ${noteData.startWeekIndex + 1} - ${noteData.startWeekIndex + noteData.spanWeeks}` :
+                                           noteKey.startsWith('weekly-specific-week-') ? `Type: Weekly Notes` :
+                                           `Date: ${noteKey}`;
+
             noteInput.value = noteData.text;
-            storedColor = noteData.color; // Get the stored color (Tailwind class or hex)
-            hasExclamation = noteData.hasExclamation; // Get exclamation state
+            storedColor = noteData.color;
+            hasExclamation = noteData.hasExclamation;
 
             let colorHexForPicker = '';
-            // If the stored color is a Tailwind class, convert it to hex for the picker
             if (storedColor.startsWith('bg-')) {
                 colorHexForPicker = reverseColorClassMap[storedColor] || reverseColorClassMap[defaultPillColor];
-            } else if (storedColor.color && storedColor.startsWith('#')) { // Check storedColor.color
-                // If it's already a hex, use it directly
+            } else if (storedColor.startsWith('#')) {
                 colorHexForPicker = storedColor;
             } else {
-                // Fallback to default hex if no color or invalid format
                 colorHexForPicker = reverseColorClassMap[defaultPillColor];
             }
 
             colorPicker.value = colorHexForPicker;
-            // Pass the stored color (Tailwind class or hex) to update swatches
-            updateSelectedSwatch(storedColor); 
-            renderLastUsedColors(); // Render last used colors when modal opens
+            updateSelectedSwatch(colorHexForPicker);
+            renderLastUsedColors();
 
-            // Set the state of the exclamation button
             if (hasExclamation) {
                 addExclamationBtn.classList.add('active-exclamation');
             } else {
@@ -1019,20 +1046,17 @@
             saveState(); // Save state before modification
             if (currentEditingDate) {
                 const noteText = noteInput.value.trim();
-                const chosenHexColor = colorPicker.value; // This is always a hex from the input type="color"
-                const hasExclamation = addExclamationBtn.classList.contains('active-exclamation'); // Get current state of button
+                const chosenHexColor = colorPicker.value;
+                const hasExclamation = addExclamationBtn.classList.contains('active-exclamation');
                 let colorToStore = chosenHexColor;
 
-                // Check if the chosen hex matches any of our predefined swatches
-                // If it does, store the Tailwind class for consistency and smaller data size
                 for (const hex in colorClassMap) {
                     if (colorClassMap.hasOwnProperty(hex) && hex === chosenHexColor) {
                         colorToStore = colorClassMap[hex];
-                        break; // Found a match, no need to check further
+                        break;
                     }
                 }
 
-                // Add to lastUsedColors
                 addLastUsedColor(colorToStore);
 
                 if (currentEditingDate.startsWith('phase-note-')) {
@@ -1040,37 +1064,34 @@
                     if (noteIndex !== -1) {
                         if (noteText) {
                             multiWeekNotes[noteIndex].text = noteText;
-                            multiWeekNotes[noteIndex].color = colorToStore; // Store hex or Tailwind class
-                            multiWeekNotes[noteIndex].hasExclamation = hasExclamation; // Save exclamation state
+                            multiWeekNotes[noteIndex].color = colorToStore;
+                            multiWeekNotes[noteIndex].hasExclamation = hasExclamation;
                         } else {
-                            // If text is empty, remove the phase note.
-                            // If it's the only one, reset it to a blank full span.
                             if (multiWeekNotes.length === 1 && multiWeekNotes[0].id === currentEditingDate) {
                                 multiWeekNotes[0].text = '';
                                 multiWeekNotes[0].color = defaultPillColor;
-                                multiWeekNotes[0].hasExclamation = false; // Reset exclamation
+                                multiWeekNotes[0].hasExclamation = false;
                             } else {
                                 multiWeekNotes.splice(noteIndex, 1);
-                                // After deletion, check for adjacent notes to merge if they become contiguous
                                 mergeAdjacentPhaseNotes();
                             }
                         }
                     }
-                } else { // Daily or new 'weekly' row notes
+                } else {
                     if (noteText) {
-                        notes[currentEditingDate] = { text: noteText, color: colorToStore, hasExclamation: hasExclamation }; // Store hex or Tailwind class and exclamation
+                        notes[currentEditingDate] = { text: noteText, color: colorToStore, hasExclamation: hasExclamation };
                     } else {
-                        delete notes[currentEditingDate]; // Remove note if empty
+                        delete notes[currentEditingDate];
                     }
                 }
-                savePlannerData(); // Save data after any modification
-                renderPlanner(); // Re-render to show note indicator
+                savePlannerData();
+                renderPlanner();
                 closeModal();
             }
         }
         
         function deleteCurrentNote() {
-            saveState(); // Save state before modification
+            saveState();
             if (currentEditingDate) {
                 if (currentEditingDate.startsWith('phase-note-')) {
                     const noteIndex = multiWeekNotes.findIndex(note => note.id === currentEditingDate);
@@ -1078,16 +1099,16 @@
                         if (multiWeekNotes.length === 1 && multiWeekNotes[0].id === currentEditingDate) {
                             multiWeekNotes[0].text = '';
                             multiWeekNotes[0].color = defaultPillColor;
-                            multiWeekNotes[0].hasExclamation = false; // Reset exclamation
+                            multiWeekNotes[0].hasExclamation = false;
                         } else {
                             multiWeekNotes.splice(noteIndex, 1);
                             mergeAdjacentPhaseNotes();
                         }
                     }
-                } else { // Daily or new 'weekly' row notes
+                } else {
                     delete notes[currentEditingDate];
                 }
-                savePlannerData(); // Save data after any modification
+                savePlannerData();
                 renderPlanner();
                 closeModal();
             }
@@ -1113,15 +1134,13 @@
         function updateSelectedSwatch(selectedColorValue) {
             document.querySelectorAll('.color-swatch').forEach(swatch => {
                 swatch.classList.remove('selected');
-                const swatchDataColor = swatch.dataset.color; // This could be hex or Tailwind class
+                const swatchDataColor = swatch.dataset.color;
                 let swatchHex = swatchDataColor;
 
-                // Convert swatchDataColor to hex if it's a Tailwind class
                 if (swatchDataColor.startsWith('bg-')) {
                     swatchHex = reverseColorClassMap[swatchDataColor];
                 }
 
-                // Convert selectedColorValue to hex if it's a Tailwind class
                 let selectedHex = selectedColorValue;
                 if (selectedColorValue.startsWith('bg-')) {
                     selectedHex = reverseColorClassMap[selectedColorValue];
@@ -1135,8 +1154,8 @@
 
         // Handles both splitting an existing note and adding a new one in empty space
         function handleMultiWeekAddSplit(noteIdToSplit, startWeekIndexForNew = null, spanWeeksForNew = null) {
-            saveState(); // Save state before modification
-            if (noteIdToSplit) { // Splitting an existing note
+            saveState();
+            if (noteIdToSplit) {
                 const noteIndex = multiWeekNotes.findIndex(note => note.id === noteIdToSplit);
                 if (noteIndex !== -1) {
                     const noteToSplit = multiWeekNotes[noteIndex];
@@ -1148,54 +1167,49 @@
                         noteToSplit.spanWeeks = newSpan1;
 
                         const newNote = {
-                            id: `phase-note-${Date.now()}`, // Unique ID
+                            id: `phase-note-${Date.now()}`,
                             text: '',
                             color: defaultPillColor,
                             startWeekIndex: noteToSplit.startWeekIndex + newSpan1,
                             spanWeeks: newSpan2,
-                            hasExclamation: false // Default to false for new split notes
+                            hasExclamation: false
                         };
-                        multiWeekNotes.splice(noteIndex + 1, 0, newNote); // Insert new note after the original
-                        savePlannerData(); // Save data after modification
+                        multiWeekNotes.splice(noteIndex + 1, 0, newNote);
+                        savePlannerData();
                         renderPlanner();
                     }
                 }
-            } else if (startWeekIndexForNew !== null && spanWeeksForNew !== null) { // Adding a new note in empty space
+            } else if (startWeekIndexForNew !== null && spanWeeksForNew !== null) {
                 const newNote = {
                     id: `phase-note-${Date.now()}`,
                     text: '',
                     color: defaultPillColor,
                     startWeekIndex: startWeekIndexForNew,
                     spanWeeks: spanWeeksForNew,
-                    hasExclamation: false // Default to false for new notes
+                    hasExclamation: false
                 };
                 multiWeekNotes.push(newNote);
-                multiWeekNotes.sort((a, b) => a.startWeekIndex - b.startWeekIndex); // Keep sorted
-                savePlannerData(); // Save data after modification
+                multiWeekNotes.sort((a, b) => a.startWeekIndex - b.startWeekIndex);
+                savePlannerData();
                 renderPlanner();
             }
         }
 
         function mergeAdjacentPhaseNotes() {
-            // No saveState here, as this is a helper function called by saveNote/deleteCurrentNote
-            // which already call saveState.
-            multiWeekNotes.sort((a, b) => a.startWeekIndex - b.startWeekIndex); // Ensure sorted
+            multiWeekNotes.sort((a, b) => a.startWeekIndex - b.startWeekIndex);
             for (let i = 0; i < multiWeekNotes.length - 1; i++) {
                 const current = multiWeekNotes[i];
                 const next = multiWeekNotes[i + 1];
 
-                // Check if current note ends exactly where the next note begins
                 if (current.startWeekIndex + current.spanWeeks === next.startWeekIndex) {
-                    // Check if both notes are empty (or have same color and text is empty)
-                    // For simplicity, let's merge if text is empty in both
                     if (!current.text && !next.text) {
                         current.spanWeeks += next.spanWeeks;
-                        multiWeekNotes.splice(i + 1, 1); // Remove the next note
-                        i--; // Recheck the current (now merged) note with the new next one
+                        multiWeekNotes.splice(i + 1, 1);
+                        i--;
                     }
                 }
             }
-            savePlannerData(); // Save data after merge
+            savePlannerData();
         }
 
 
@@ -1207,30 +1221,30 @@
         let initialStartWeekIndex = 0;
         let currentNoteIdBeingResized = null;
         let currentNoteBeingResized = null;
-        let adjacentNoteBeingResized = null; // For left handle, the note to its left
+        let adjacentNoteBeingResized = null;
 
         document.addEventListener('mousedown', (e) => {
             const handle = e.target.dataset.handle;
-            if (handle) {
-                saveState(); // Save state before resizing starts
+            // Ensure we are not clicking the plus button
+            if (handle && !e.target.classList.contains('plus-button')) {
+                saveState();
                 isResizing = true;
                 activeHandle = handle;
                 initialMouseX = e.clientX;
-                const td = e.target.closest('td');
-                currentNoteIdBeingResized = td.dataset.noteId;
+                const notePill = e.target.closest('.note-pill'); // Get the notePill
+                currentNoteIdBeingResized = notePill.closest('td').dataset.noteId; // Get ID from parent td
                 currentNoteBeingResized = multiWeekNotes.find(note => note.id === currentNoteIdBeingResized);
-                initialSpanWeeks = currentNoteBeingResized.spanWeeks; 
+                initialSpanWeeks = currentNoteBeingResized.spanWeeks;
                 initialStartWeekIndex = currentNoteBeingResized.startWeekIndex;
 
                 if (activeHandle === 'left') {
-                    // Find the note to the left if resizing from the left
-                    adjacentNoteBeingResized = multiWeekNotes.find(note => 
+                    adjacentNoteBeingResized = multiWeekNotes.find(note =>
                         note.startWeekIndex + note.spanWeeks === initialStartWeekIndex
                     );
                 }
 
                 document.body.style.cursor = 'ew-resize';
-                document.body.style.userSelect = 'none'; // Prevent text selection during drag
+                document.body.style.userSelect = 'none';
             }
         });
 
@@ -1245,39 +1259,30 @@
 
             if (activeHandle === 'right') {
                 newSpanWeeks = Math.max(1, initialSpanWeeks + weekDelta);
-                // Ensure note doesn't extend beyond total weeks
                 newSpanWeeks = Math.min(newSpanWeeks, allPlannerWeeks.length - initialStartWeekIndex);
             } else if (activeHandle === 'left') {
-                // Calculate potential new start index based on mouse movement
                 let potentialNewStartWeekIndex = initialStartWeekIndex + weekDelta;
+                potentialNewStartWeekIndex = Math.max(0, potentialNewStartWeekIndex);
+                potentialNewStartWeekIndex = Math.min(potentialNewStartWeekIndex, initialStartWeekIndex + initialSpanWeeks - 1);
 
-                // Clamp potentialNewStartWeekIndex to valid range
-                potentialNewStartWeekIndex = Math.max(0, potentialNewStartWeekIndex); // Cannot go before week 0
-                potentialNewStartWeekIndex = Math.min(potentialNewStartWeekIndex, initialStartWeekIndex + initialSpanWeeks - 1); // Cannot go past its own end - 1 week
-
-                // If there's an adjacent note to the left, ensure we don't overlap it
                 if (adjacentNoteBeingResized) {
                     const adjacentEndIndex = adjacentNoteBeingResized.startWeekIndex + adjacentNoteBeingResized.spanWeeks;
                     potentialNewStartWeekIndex = Math.max(potentialNewStartWeekIndex, adjacentEndIndex);
                 }
 
-                // Calculate the actual change in weeks based on the clamped new start index
                 const actualWeekDelta = potentialNewStartWeekIndex - initialStartWeekIndex;
-
                 newStartWeekIndex = initialStartWeekIndex + actualWeekDelta;
                 newSpanWeeks = initialSpanWeeks - actualWeekDelta;
 
-                // Ensure span is at least 1
                 if (newSpanWeeks < 1) {
                     newSpanWeeks = 1;
-                    newStartWeekIndex = initialStartWeekIndex + initialSpanWeeks - 1; // Adjust start to keep span 1
+                    newStartWeekIndex = initialStartWeekIndex + initialSpanWeeks - 1;
                 }
             }
 
-            // Apply temporary changes for visual feedback during drag
             currentNoteBeingResized.spanWeeks = newSpanWeeks;
             currentNoteBeingResized.startWeekIndex = newStartWeekIndex;
-            renderPlanner(); // Re-render to show interim state
+            renderPlanner();
         });
 
         document.addEventListener('mouseup', () => {
@@ -1290,11 +1295,9 @@
                 document.body.style.cursor = 'default';
                 document.body.style.userSelect = '';
                 
-                // After resizing, re-sort and re-render to ensure state consistency
                 multiWeekNotes.sort((a, b) => a.startWeekIndex - b.startWeekIndex);
-                // Consider merging adjacent empty notes after a resize
                 mergeAdjacentPhaseNotes();
-                savePlannerData(); // Save data after resize
+                savePlannerData();
                 renderPlanner();
             }
         });
@@ -1302,49 +1305,43 @@
 
         // PDF Export Function
         exportPdfBtn.addEventListener('click', () => {
-            // Target the main content container for a more complete capture
             const elementToCapture = document.querySelector('.container.mx-auto'); 
             const tableContainer = document.querySelector('.overflow-x-auto');
 
-            // Store original styles
             let originalTableContainerOverflowX = '';
             let originalTableContainerHeight = '';
             let originalTableContainerMaxHeight = '';
             let originalBodyOverflow = document.body.style.overflow;
             let originalHtmlOverflow = document.documentElement.style.overflow;
 
-            // Apply temporary styles to ensure all content is visible
             if (tableContainer) {
                 originalTableContainerOverflowX = tableContainer.style.overflowX;
                 tableContainer.style.overflowX = 'visible';
-                tableContainer.style.height = 'auto'; // Remove fixed height
-                tableContainer.style.maxHeight = 'none'; // Remove max-height
+                tableContainer.style.height = 'auto';
+                tableContainer.style.maxHeight = 'none';
             }
             document.body.style.overflow = 'visible';
-            document.documentElement.style.overflow = 'visible'; // Ensure html element doesn't clip
+            document.documentElement.style.overflow = 'visible';
 
-            // Small delay to allow reflow
             setTimeout(() => {
                 const opt = {
                     margin: 0.5,
                     filename: 'Graduation_Project_Planning.pdf',
                     image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: {
-                        scale: 1, // Keep scale at 1 for now, can increase if text looks blurry
+                        scale: 1,
                         logging: true,
                         dpi: 192,
                         letterRendering: true,
-                        // Capture the full scrollable width and height of the main content element
                         width: elementToCapture.scrollWidth,
                         height: elementToCapture.scrollHeight,
-                        useCORS: true // Important for images/external resources if any
+                        useCORS: true
                     },
                     jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
-                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // Try to avoid breaking elements
+                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
                 };
 
                 html2pdf().set(opt).from(elementToCapture).save().then(() => {
-                    // Revert all temporary styles
                     if (tableContainer) {
                         tableContainer.style.overflowX = originalTableContainerOverflowX;
                         tableContainer.style.height = originalTableContainerHeight;
@@ -1353,7 +1350,7 @@
                     document.body.style.overflow = originalBodyOverflow;
                     document.documentElement.style.overflow = originalHtmlOverflow;
                 });
-            }, 200); // 200ms delay
+            }, 200);
         });
 
         // Export Data Function
@@ -1362,22 +1359,22 @@
                 notes: notes,
                 multiWeekNotes: multiWeekNotes
             };
-            const dataStr = JSON.stringify(plannerData, null, 2); // Pretty print JSON
+            const dataStr = JSON.stringify(plannerData, null, 2);
 
             const blob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = 'graduation_planner_data.json';
-            document.body.appendChild(a); // Append to body to make it clickable
-            a.click(); // Programmatically click the link to trigger download
-            document.body.removeChild(a); // Clean up the temporary link
-            URL.revokeObjectURL(url); // Free up the object URL
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         });
 
         // Upload Data Function
         uploadDataBtn.addEventListener('click', () => {
-            uploadFileInput.click(); // Trigger the hidden file input click
+            uploadFileInput.click();
         });
 
         uploadFileInput.addEventListener('change', (event) => {
@@ -1388,24 +1385,21 @@
                     try {
                         const loadedData = JSON.parse(e.target.result);
                         if (loadedData.notes && loadedData.multiWeekNotes) {
-                            saveState(); // Save current state before loading new data
+                            saveState();
                             notes = loadedData.notes;
                             multiWeekNotes = loadedData.multiWeekNotes;
-                            savePlannerData(); // Save loaded data to local storage
-                            renderPlanner(); // Re-render the planner with new data
+                            savePlannerData();
+                            renderPlanner();
                             console.log('Planner data uploaded successfully!');
                         } else {
                             console.error('Invalid JSON structure: missing notes or multiWeekNotes properties.');
-                            // Optionally, show a user-friendly message
                         }
                     } catch (error) {
                         console.error('Error parsing JSON file:', error);
-                        // Optionally, show a user-friendly message
                     }
                 };
-                reader.readAsText(file); // Read the file as text
+                reader.readAsText(file);
             }
-            // Clear the file input value to allow uploading the same file again if needed
             event.target.value = '';
         });
 
@@ -1425,9 +1419,8 @@
         });
 
         confirmYesBtn.addEventListener('click', () => {
-            saveState(); // Save state before clearing everything
-            notes = {}; // Clear daily/weekly notes
-            // Reset multi-week note to a single, full-span, empty note
+            saveState();
+            notes = {};
             multiWeekNotes = [{ id: `phase-note-${Date.now()}`, text: '', color: 'bg-indigo-500', startWeekIndex: 0, spanWeeks: allPlannerWeeks.length, hasExclamation: false }];
             savePlannerData();
             renderPlanner();
@@ -1453,7 +1446,7 @@
         deleteNoteBtn.addEventListener('click', deleteCurrentNote);
         
         notesModal.addEventListener('click', (event) => {
-            if (event.target === notesModal) { // Click outside modal content
+            if (event.target === notesModal) {
                 closeModal();
             }
         });
@@ -1461,30 +1454,28 @@
         // Global keydown listener for Ctrl+Z (or Cmd+Z on Mac)
         document.addEventListener('keydown', (event) => {
             if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
-                event.preventDefault(); // Prevent browser's default undo behavior
+                event.preventDefault();
                 undo();
             }
         });
 
         colorPicker.addEventListener('change', (event) => {
             const hexColor = event.target.value;
-            // When the native color picker is used, update the swatches based on the hex
             updateSelectedSwatch(hexColor);
         });
 
         colorSwatches.addEventListener('click', (event) => {
             const swatch = event.target.closest('.color-swatch');
             if (swatch) {
-                const colorData = swatch.dataset.color; // This could be hex or Tailwind class
+                const colorData = swatch.dataset.color;
                 let hexColorForPicker = colorData;
 
-                // If the stored color is a Tailwind class, convert it to hex for the picker
                 if (colorData.startsWith('bg-')) {
                     hexColorForPicker = reverseColorClassMap[colorData];
                 }
                 
-                colorPicker.value = hexColorForPicker; // Set the native color picker's value
-                updateSelectedSwatch(colorData); // Update swatches based on the stored data color
+                colorPicker.value = hexColorForPicker;
+                updateSelectedSwatch(colorData);
             }
         });
 
@@ -1496,8 +1487,8 @@
         // Initial load of data and render
         loadPlannerData();
         renderPlanner();
-        saveState(); // Save the initial state after loading and rendering
-    }; // End of window.onload
+        saveState();
+    };
 </script>
 </body>
 </html>
